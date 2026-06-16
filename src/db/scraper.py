@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import json
 # Own Modules
-from src.db.database import init_db, insert_cards_into_db
+from database import init_db, insert_cards_into_db, extract_id_image
 
 website = 'https://riftbound.leagueoflegends.com/de-de/card-gallery/'
 
@@ -10,7 +10,6 @@ response = requests.get(website)
 
 print(f"Status Code: {response.status_code}")
 #print(f"HTML Text: {response.text}")
-
 
 soup = BeautifulSoup(response.text, 'html.parser')
 
@@ -98,8 +97,6 @@ init_db()
 
 # Write in Database
 insert_cards_into_db(card_data)
-
-
 
 # ------Card Search (Helper)------
 # query_pubcode = 'UNL-001/219'

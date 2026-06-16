@@ -1,5 +1,8 @@
 # Ignore venv
 venv/
 
-# ignore cached files
+# Ignore cached files
 __pycache__/
+
+# Ignore Data Folder
+data/

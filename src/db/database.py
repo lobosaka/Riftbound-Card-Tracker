@@ -56,3 +56,13 @@ def insert_cards_into_db(card_data):
     conn.close()
     print(f"Erfolgreich {len(card_data)} Daten in die Datenbank geschrieben!")
 
+def extract_id_image():
+    conn = sqlite3.connect('riftbound.db')
+    cursor = conn.cursor()
+    sql = "SELECT id, image FROM cards"
+    cursor.execute(sql)
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+
