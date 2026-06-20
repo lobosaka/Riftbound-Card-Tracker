@@ -20,23 +20,24 @@ def create_card_dict():
     return card_dict, rev_card_dict
 
 # Augmentation Pipeline
-augmentation = transforms.Compose([
-    # Random Rotation up to 15 Degrees
-    transforms.RandomRotation(degrees=15),
-    # +/- 20% change in contrast, brightness, saturation
-    transforms.ColorJitter(
-        contrast=0.2,
-        brightness=0.2,
-        saturation=0.2
-    ),
-    # Blur
-    transforms.GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0)),
-    # Transformation in Tensor
-
-    # NOTIZ AN MICH: Was ist mit Normalisierung für bestimmte Netzwerke, wie ResNet50?
-
-    transforms.ToTensor()
-])
+def augmentation(mean, std):
+    augmentation = transforms.Compose([
+        # Random Rotation up to 15 Degrees
+        transforms.RandomRotation(degrees=15),
+        # +/- 20% change in contrast, brightness, saturation
+        transforms.ColorJitter(
+            contrast=0.2,
+            brightness=0.2,
+            saturation=0.2
+        ),
+        # Blur
+        transforms.GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0)),
+        # Transformation in Tensor
+        transforms.ToTensor(),
+        # Normalisierung
+        transforms.Normalize(mean=mean, std=std)
+    ])
+    return augmentation
 
 class RiftboundDataset(Dataset):
     def __init__(self, image_dir, card_dict, transforms=None):
@@ -62,6 +63,4 @@ class RiftboundDataset(Dataset):
             image = self.transforms(image)
         # return Image(Tensor) and Label
         return image, label
-    
-if __name__ == '__main__':
-    card_dict, rev_card_dict = create_card_dict()
+

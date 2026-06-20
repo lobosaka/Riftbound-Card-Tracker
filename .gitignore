@@ -6,3 +6,6 @@ __pycache__/
 
 # Ignore Data Folder
 data/
+
+# Ignore Model Weights
+src/models/checkpoints/
