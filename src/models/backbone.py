@@ -17,7 +17,7 @@ def get_resnet50_model(num_classes=960):
     # Model zurückgeben. fc-Schicht hat automatisch requires_grad=True
     return model   
 
-def get_normalization_params(model):
+def get_normalization_params(model='ResNet50'):
     if model == "ResNet50":
         model = models.ResNet50_Weights.DEFAULT
         return model.transforms().mean, model.transforms().std
