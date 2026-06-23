@@ -4,6 +4,7 @@ import torch
 from torch.utils.data import DataLoader
 import torch.optim as optim
 import torch.nn as nn
+from torch.optim.lr_scheduler import CosineAnnealingLR
 # Own Modules
 from src.models.backbone import get_resnet50_model, get_normalization_params
 from src.dataset.dataloader import RiftboundDataset, create_card_dict, augmentation
@@ -11,7 +12,7 @@ from src.dataset.dataloader import RiftboundDataset, create_card_dict, augmentat
 card_dict, _ = create_card_dict()
 
 model = "ResNet50" # <- Current Model pick
-num_epochs = 50 # <- Current amount of Epochs
+num_epochs = 300 # <- Current amount of Epochs
 # Get Parameters for Normalization (Augmentation Pipeline)
 mean, std = get_normalization_params(model)
 # Create Dataset and Dataloader
@@ -21,9 +22,15 @@ train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = get_resnet50_model(num_classes=960)
 model = model.to(device)
-# Define Loss and Optimizer
+# Gesamtes Netz trainieren
+for param in model.layer4.parameters():
+    param.requires_grad = True
+for param in model.fc.parameters():
+    param.requires_grad = True
+# Define Loss, Optimizer and Scheduler
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=0.001) # pass only parameters that are not frozen (requires_grad=True)
+optimizer = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=5e-5, weight_decay=1e-5) # pass only parameters that are not frozen (requires_grad=True)
+scheduler = CosineAnnealingLR(optimizer=optimizer, T_max=300, eta_min=1e-7)
 # Switch to Training Mode
 model.train()
 
@@ -58,13 +65,17 @@ for epoch in range(num_epochs):
         total_predicitions += labels.size(0)
         correct_predictions += (predicted==labels).sum().item()
 
+    # LR Update
+    scheduler.step()
+
     # Epoch-Statistic
+    current_lr = optimizer.param_groups[0]['lr']
     epoch_loss = running_loss/len(train_dataset)
     epoch_acc = (correct_predictions/total_predicitions) * 100
     elapsed_time = time.time() - start_time
 
     if (epoch+1) % 5 == 0 or epoch == 0:
-        print(f"Epoch: {epoch+1}/{num_epochs} - Loss: {epoch_loss:.4f} - Acc: {epoch_acc:.2f} - Time: {elapsed_time:.1f}")
+        print(f"Epoch: {epoch+1}/{num_epochs} - Loss: {epoch_loss:.4f} - Acc: {epoch_acc:.2f} - LR: {current_lr:.7f} - Time: {elapsed_time:.1f}")
 
 print("Training erfolgreich beendet!")
 

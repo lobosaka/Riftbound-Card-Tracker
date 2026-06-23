@@ -22,15 +22,16 @@ def create_card_dict():
 def augmentation(mean, std):
     augmentation = transforms.Compose([
         # Random Rotation up to 15 Degrees
-        transforms.RandomRotation(degrees=15),
-        # +/- 20% change in contrast, brightness, saturation
+        transforms.RandomRotation(degrees=20),
+        # +/- 40% change in contrast, brightness, +/- 30% saturation, +/- 10% hue
         transforms.ColorJitter(
-            contrast=0.2,
-            brightness=0.2,
-            saturation=0.2
+            contrast=0.4,
+            brightness=0.4,
+            saturation=0.3,
+            hue=0.1
         ),
         # Blur
-        transforms.GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 2.0)),
+        transforms.GaussianBlur(kernel_size=(5, 5), sigma=(0.1, 3.0)),
         # Transformation in Tensor
         transforms.ToTensor(),
         # Normalisierung

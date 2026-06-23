@@ -10,7 +10,7 @@ from src.dataset.dataloader import create_card_dict
 # Get ResNet50 Model
 model = get_resnet50_model(num_classes=960)
 # Load trained Model Weights
-model.load_state_dict(torch.load(r'src/models/checkpoints/riftbound_resnet50_weights_100_epochs.pth', map_location=torch.device('cpu')))
+model.load_state_dict(torch.load(r'src/models/checkpoints/riftbound_resnet50_weights.pth', map_location=torch.device('cpu')))
 # Set Model into eval-mode
 model.eval()
 # Transformation for Inference
@@ -20,7 +20,7 @@ inference_transforms = transforms.Compose([
     transforms.Normalize(mean=mean, std=std)
 ])
 
-image = 'Bild_3.jpeg'
+image = 'ogn-002-298.png'
 image_path = os.path.join('data/inference_images/', image)
 padded_image = padding(image_path)
 input_tensor = inference_transforms(padded_image)
