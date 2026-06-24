@@ -6,3 +6,7 @@ __pycache__/
 
 # Ignore Data Folder
 data/
+
+pilot/card_images/
+pilot/debug_steps/
+pilot/card_images_processed/
