@@ -6,7 +6,8 @@ __pycache__/
 
 # Ignore Data Folder
 data/
+src/ogn_ocr/data/
+models/*.pt
 
-pilot/card_images/
 pilot/debug_steps/
-pilot/card_images_processed/
+pilot/images

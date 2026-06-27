@@ -1,9 +1,23 @@
 from PIL import Image
 import pytesseract  # type: ignore[import-not-found]
 import cv2
+from pathlib import Path
 
 
-IMAGE_PATH = "input2.png"
+ # Resolve images directory: prefer pilot/debug_steps/images, then pilot/images, then ../debug_steps/images
+_CANDIDATE_DIRS = [
+    Path(__file__).parent / "debug_steps" / "images",
+    Path(__file__).parent / "images",
+    Path(__file__).parent.parent / "debug_steps" / "images",
+]
+
+for _d in _CANDIDATE_DIRS:
+    if _d.exists():
+        IMAGE_DIR = _d
+        break
+else:
+    # default to the first candidate (keeps original behavior and error message)
+    IMAGE_DIR = _CANDIDATE_DIRS[0]
 
 
 def preprocess_image(image_path: str):
@@ -28,18 +42,31 @@ def run_ocr(image):
     # This often works well for simple demo images
     config = "--psm 6"
 
-    text = pytesseract.image_to_string(image, config=config)
+    # Convert OpenCV (numpy) image to PIL Image for pytesseract
+    pil_image = Image.fromarray(image)
+
+    text = pytesseract.image_to_string(pil_image, config=config)
     return text
 
 
 def main():
-    processed_image = preprocess_image(IMAGE_PATH)
+    image_dir = IMAGE_DIR
 
-    text = run_ocr(processed_image)
+    if not image_dir.exists():
+        raise FileNotFoundError(f"Images directory not found: {image_dir}")
 
-    print("Extracted text:")
-    print("----------------")
-    print(text)
+    for image_file in sorted(image_dir.iterdir()):
+        if not image_file.is_file():
+            continue
+        if image_file.suffix.lower() not in (".png", ".jpg", ".jpeg", ".bmp", ".tiff"):  # skip non-images
+            continue
+
+        image_path = str(image_file)
+        processed_image = preprocess_image(image_path)
+        text = run_ocr(processed_image)
+        print(f"Extracted text from {image_file.name}:")
+        print("----------------")
+        print(text)
 
 
 if __name__ == "__main__":
