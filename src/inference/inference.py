@@ -2,10 +2,11 @@ import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 import os
+import json
+from PIL import Image
 # Own Modules
 from src.models.backbone import get_resnet50_model, get_normalization_params
-from src.trans.transform import padding
-from src.dataset.dataloader import create_card_dict
+from src.dataset.dataloader import SquarePadding
 
 # Get ResNet50 Model
 model = get_resnet50_model(num_classes=960)
@@ -16,14 +17,16 @@ model.eval()
 # Transformation for Inference
 mean, std = get_normalization_params('ResNet50')
 inference_transforms = transforms.Compose([
+    SquarePadding(),
+    transforms.Resize((224,224)),
     transforms.ToTensor(),
     transforms.Normalize(mean=mean, std=std)
 ])
 
-image = 'ogn-002-298.png'
+image = 'Bild_1.jpeg'
 image_path = os.path.join('data/inference_images/', image)
-padded_image = padding(image_path)
-input_tensor = inference_transforms(padded_image)
+with Image.open(image_path) as img:
+    input_tensor = inference_transforms(img)
 input_batch = input_tensor.unsqueeze(0)
 
 with torch.no_grad():
@@ -37,8 +40,13 @@ predicted_label_idx = top_prob_idx.item()
 
 print(f"Das Modell hat mit einer Sicherheit von {confidence:.2f}% das Label {predicted_label_idx} vorhergesagt.")
 
-_, card_dict = create_card_dict()
-card_label = card_dict[predicted_label_idx]
+# Load JSON file and create dict
+json_path = "data/card_to_label.json"
+with open(json_path, 'r', encoding='utf-8') as f:
+    card_dict = json.load(f)
+# Reverse the Dictionary to get Name as Value for idx
+card_dict_rev = {v: k for k, v in card_dict.items()}
+card_id = card_dict_rev[predicted_label_idx]
 
-print(f"Die Vorhergesagte Karte ist: {card_label}")
+print(f"Die Vorhergesagte Karte ist: {card_id}")
 

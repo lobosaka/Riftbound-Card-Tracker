@@ -1,7 +1,7 @@
 import os
 import requests
 # Own Modules
-from database import extract_id_image
+from src.db.database import extract_id_image
 
 # Extract IDs and Image URLs
 rows = extract_id_image()
