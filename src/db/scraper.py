@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import json
 # Own Modules
-from database import init_db, insert_cards_into_db, extract_id_image
+from src.db.database import init_db, insert_cards_into_db, extract_id_image
 
 website = 'https://riftbound.leagueoflegends.com/de-de/card-gallery/'
 
