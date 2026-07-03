@@ -11,3 +11,4 @@ models/*.pt
 
 pilot/debug_steps/
 pilot/images
+pilot/processed_images
