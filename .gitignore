@@ -12,3 +12,5 @@ models/*.pt
 #Ignore images
 src/OCR/images/
 pilot/trash
+
+.DS_Store

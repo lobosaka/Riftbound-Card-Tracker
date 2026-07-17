@@ -156,3 +156,18 @@ def run_ocr(image):
     if results:
         return results
     return run_vision_ocr(image)
+
+
+def describe_ocr_backend():
+    return {
+        "paddle_available": PaddleOCR is not None,
+        "vision_available": all(
+            dependency is not None
+            for dependency in (
+                NSData,
+                VNImageRequestHandler,
+                VNRecognizeTextRequest,
+                VNRequestTextRecognitionLevelAccurate,
+            )
+        ),
+    }

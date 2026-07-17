@@ -50,17 +50,17 @@ def load_all_cards() -> pd.DataFrame:
 
 @st.cache_data
 def load_collection() -> pd.DataFrame:
-    return pd.DataFrame(get_json("/cards/collection"))
+    return pd.DataFrame(get_json("/cards?inventory=collection"))
 
 
 @st.cache_data
 def load_missing_cards() -> pd.DataFrame:
-    return pd.DataFrame(get_json("/cards/missing"))
+    return pd.DataFrame(get_json("/cards?inventory=missing"))
 
 
 @st.cache_data
 def load_collection_statistics() -> dict:
-    return get_json("/cards/statistics")
+    return get_json("/cards?stats=true")
 
 
 def update_inventory(card_id: str, new_quantity: int) -> None:
@@ -74,8 +74,8 @@ def update_inventory(card_id: str, new_quantity: int) -> None:
 
 
 def change_inventory(card_id: str, difference: int) -> None:
-    response = requests.post(
-        build_url(f"/cards/{card_id}/inventory/change"),
+    response = requests.put(
+        build_url(f"/cards/{card_id}/inventory"),
         json={"difference": difference},
         timeout=REQUEST_TIMEOUT_SECONDS,
     )

@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+from time import perf_counter
 
 
 if __package__ in (None, ""):
@@ -11,11 +12,13 @@ if __package__ in (None, ""):
     from backend.card_image_processor import CardImageProcessor
     from backend.card_repository import CardRepository
     from backend.card_scanner import CardScanner
+    from backend.ocr_backend import describe_ocr_backend
 else:
     from .backend.card_code_parser import CardCodeParser
     from .backend.card_image_processor import CardImageProcessor
     from .backend.card_repository import CardRepository
     from .backend.card_scanner import CardScanner
+    from .backend.ocr_backend import describe_ocr_backend
 
 
 
@@ -37,6 +40,36 @@ def process_image(image_path):
     code, candidates = scanner.extract_code_from_photo(str(image_file))
     scanner.print_result(image_file, code, candidates)
     return code, candidates
+
+
+def process_image_with_debug(image_path):
+    image_file = Path(image_path).expanduser().resolve()
+    if not image_file.exists():
+        raise FileNotFoundError(f"Image not found: {image_file}")
+    if not image_file.is_file():
+        raise ValueError(f"Expected an image file path, got: {image_file}")
+
+    scanner = build_scanner()
+    started_at = perf_counter()
+    code, candidates = scanner.extract_code_from_photo(str(image_file))
+    elapsed_ms = round((perf_counter() - started_at) * 1000, 2)
+    scanner.print_result(image_file, code, candidates)
+
+    return {
+        "image_path": str(image_file),
+        "code": code,
+        "candidates": [
+            {"source": candidate.source, "code": candidate.code}
+            for candidate in candidates
+        ],
+        "debug": {
+            "elapsed_ms": elapsed_ms,
+            "candidate_count": len(candidates),
+            "selected_code_found": bool(code),
+            "file_size_bytes": image_file.stat().st_size,
+            "ocr_backend": describe_ocr_backend(),
+        },
+    }
 
 
 def main(image_path=None):
