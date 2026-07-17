@@ -1,6 +1,13 @@
 import re
-import sqlite3
+import sys
 from pathlib import Path
+
+
+SRC_ROOT = Path(__file__).resolve().parents[2]
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from card_data import load_cards_for_code_index
 
 
 class CardRecord:
@@ -16,8 +23,7 @@ class CardRepository:
         r"^(?:(?P<set>[A-Z]{3})-?)?(?P<number>\d{1,3})(?P<suffix>[A-Z*]?)/(?P<total>\d{3})$"
     )
 
-    def __init__(self, db_path):
-        self.db_path = db_path
+    def __init__(self):
         self.card_code_index = self._build_card_code_index()
         self.known_set_codes = {
             code for code in self.card_code_index if self.SET_CODE_PATTERN.fullmatch(code)
@@ -90,18 +96,16 @@ class CardRepository:
         return variants
 
     def _load_cards(self):
-        conn = sqlite3.connect(self.db_path)
-        try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT id, name, publicCode, collectorNumber FROM cards")
-            rows = cursor.fetchall()
-        finally:
-            conn.close()
-
         cards = []
-        for card_id, name, public_code, collector_number in rows:
+        for row in load_cards_for_code_index():
+            card_id = row["id"]
+            name = row["name"]
+            public_code = row["publicCode"]
+            collector_number = row["collectorNumber"]
+
             if not public_code:
                 continue
+
             cards.append(
                 (
                     CardRecord(id=card_id, name=name, public_code=public_code),

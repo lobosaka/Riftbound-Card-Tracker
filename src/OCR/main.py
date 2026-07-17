@@ -1,15 +1,27 @@
 from pathlib import Path
 import sys
-from backend.card_code_parser import CardCodeParser
-from backend.card_image_processor import CardImageProcessor
-from backend.card_repository import CardRepository
-from backend.card_scanner import CardScanner
+
+
+if __package__ in (None, ""):
+    SRC_ROOT = Path(__file__).resolve().parents[1]
+    if str(SRC_ROOT) not in sys.path:
+        sys.path.insert(0, str(SRC_ROOT))
+
+    from backend.card_code_parser import CardCodeParser
+    from backend.card_image_processor import CardImageProcessor
+    from backend.card_repository import CardRepository
+    from backend.card_scanner import CardScanner
+else:
+    from .backend.card_code_parser import CardCodeParser
+    from .backend.card_image_processor import CardImageProcessor
+    from .backend.card_repository import CardRepository
+    from .backend.card_scanner import CardScanner
 
 
 
 def build_scanner():
     image_processor = CardImageProcessor()
-    repository = CardRepository(Path(__file__).resolve().parents[2] / "riftbound.db")
+    repository = CardRepository()
     parser = CardCodeParser(repository)
     return CardScanner(repository, parser, image_processor)
 
@@ -28,11 +40,13 @@ def process_image(image_path):
 
 
 def main(image_path=None):
-    image_path = "OCR/images/1.jpg"  # Default image path for testing
     if image_path is None:
         if len(sys.argv) < 2:
-            raise ValueError("Usage: python pilot/main.py <image_path>")
-        image_path = sys.argv[1]
+            image_path = str(
+                Path(__file__).resolve().parent / "images/1.jpg"
+            )
+        else:
+            image_path = sys.argv[1]
 
     return process_image(image_path)
 
