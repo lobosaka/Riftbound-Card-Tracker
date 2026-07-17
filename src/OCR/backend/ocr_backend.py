@@ -1,16 +1,13 @@
-from __future__ import annotations
-
 from functools import lru_cache
 from io import BytesIO
-from typing import Any
 
 import numpy as np
 from PIL import Image
 
 try:
-    from paddleocr import PaddleOCR  # type: ignore[import-not-found]
+    from paddleocr import PaddleOCR
 except ImportError:  # pragma: no cover - optional dependency
-    PaddleOCR = None  # type: ignore[assignment]
+    PaddleOCR = None
 
 try:  # pragma: no cover - macOS-only fallback
     from Foundation import NSData
@@ -20,20 +17,20 @@ try:  # pragma: no cover - macOS-only fallback
         VNRequestTextRecognitionLevelAccurate,
     )
 except ImportError:  # pragma: no cover - optional dependency
-    NSData = None  # type: ignore[assignment]
-    VNImageRequestHandler = None  # type: ignore[assignment]
-    VNRecognizeTextRequest = None  # type: ignore[assignment]
-    VNRequestTextRecognitionLevelAccurate = None  # type: ignore[assignment]
+    NSData = None
+    VNImageRequestHandler = None
+    VNRecognizeTextRequest = None
+    VNRequestTextRecognitionLevelAccurate = None
 
 
-def pil_from_array(image: np.ndarray) -> Image.Image:
+def pil_from_array(image):
     if image.ndim == 2:
         return Image.fromarray(image)
     return Image.fromarray(image.astype(np.uint8), mode="RGB")
 
 
 @lru_cache(maxsize=1)
-def get_paddle_ocr() -> Any:
+def get_paddle_ocr():
     if PaddleOCR is None:
         return None
 
@@ -53,7 +50,7 @@ def get_paddle_ocr() -> Any:
         },
     )
 
-    last_error: Exception | None = None
+    last_error = None
     for kwargs in init_variants:
         try:
             return PaddleOCR(**kwargs)
@@ -65,7 +62,7 @@ def get_paddle_ocr() -> Any:
     return None
 
 
-def _extract_text_conf_box(item: Any) -> tuple[str, float, Any] | None:
+def _extract_text_conf_box(item):
     if isinstance(item, dict):
         text = item.get("text")
         if not text:
@@ -89,10 +86,10 @@ def _extract_text_conf_box(item: Any) -> tuple[str, float, Any] | None:
     return None
 
 
-def parse_paddle_result(result: Any) -> list[dict[str, Any]]:
-    observations: list[dict[str, Any]] = []
+def parse_paddle_result(result):
+    observations = []
 
-    def visit(node: Any) -> None:
+    def visit(node):
         parsed = _extract_text_conf_box(node)
         if parsed is not None:
             text, confidence, box = parsed
@@ -112,7 +109,7 @@ def parse_paddle_result(result: Any) -> list[dict[str, Any]]:
     return observations
 
 
-def run_paddle_ocr(image: np.ndarray) -> list[dict[str, Any]]:
+def run_paddle_ocr(image):
     engine = get_paddle_ocr()
     if engine is None:
         return []
@@ -121,7 +118,7 @@ def run_paddle_ocr(image: np.ndarray) -> list[dict[str, Any]]:
     return parse_paddle_result(result)
 
 
-def run_vision_ocr(image: np.ndarray) -> list[dict[str, Any]]:
+def run_vision_ocr(image):
     if VNRecognizeTextRequest is None or NSData is None or VNImageRequestHandler is None:
         return []
 
@@ -141,7 +138,7 @@ def run_vision_ocr(image: np.ndarray) -> list[dict[str, Any]]:
     if not success:
         raise RuntimeError(f"OCR failed: {error}")
 
-    results: list[dict[str, Any]] = []
+    results = []
     for observation in request.results():
         for candidate in observation.topCandidates_(5):
             results.append(
@@ -154,7 +151,7 @@ def run_vision_ocr(image: np.ndarray) -> list[dict[str, Any]]:
     return results
 
 
-def run_ocr(image: np.ndarray) -> list[dict[str, Any]]:
+def run_ocr(image):
     results = run_paddle_ocr(image)
     if results:
         return results

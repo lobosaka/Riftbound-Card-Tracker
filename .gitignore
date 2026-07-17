@@ -9,6 +9,6 @@ data/
 src/ogn_ocr/data/
 models/*.pt
 
-pilot/debug_steps/
-pilot/images
-pilot/processed_images
+#Ignore images
+src/OCR/images/
+pilot/trash
