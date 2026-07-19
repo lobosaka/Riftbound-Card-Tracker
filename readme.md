@@ -21,7 +21,6 @@ curl -X POST http://127.0.0.1:8000/ocr \
 Runs OCR on either:
 - an existing image via `image_path`
 - a camera capture via `source: "camera"`
-- a screen capture via `source: "screen"`
 
 ```bash
 curl -X POST http://127.0.0.1:8000/ocr \
@@ -31,12 +30,48 @@ curl -X POST http://127.0.0.1:8000/ocr \
   }'
 ```
 
+For an external camera on macOS, pass the camera index explicitly. The code now uses
+OpenCV's AVFoundation backend on macOS by default, which is the correct backend for
+USB/UVC webcams and document cameras.
+
 ```bash
 curl -X POST http://127.0.0.1:8000/ocr \
   -H "Content-Type: application/json" \
   -d '{
-    "source": "screen",
-    "filename": "screen-card.png"
+    "source": "camera",
+    "camera_device_index": 1,
+    "camera_width": 1920,
+    "camera_height": 1080,
+    "camera_warmup_frames": 15,
+    "filename": "external-camera-shot.jpg"
+  }'
+```
+
+If your iPhone is being selected first via Continuity Camera, probe several indices and
+inspect the saved images. This writes `probe_camera_*.jpg` files into
+`src/OCR/images/captures/`.
+
+```bash
+curl -X POST http://127.0.0.1:8000/camera/probe \
+  -H "Content-Type: application/json" \
+  -d '{
+    "device_indices": [0, 1, 2, 3, 4],
+    "camera_width": 1920,
+    "camera_height": 1080
+  }'
+```
+
+Then use the working camera in priority order:
+
+```bash
+curl -X POST http://127.0.0.1:8000/ocr \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": "camera",
+    "camera_device_candidates": [2, 1, 0],
+    "camera_width": 1920,
+    "camera_height": 1080,
+    "filename": "external-camera-shot.jpg"
   }'
 ```
 

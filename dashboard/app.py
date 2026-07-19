@@ -34,6 +34,11 @@ pages = {
             title="Alle Karten",
             icon="🃏",
         ),
+        st.Page(
+            "pages/camera_live.py",
+            title="Kamera Live",
+            icon="📷",
+        ),
     ],
 }
 

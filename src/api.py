@@ -2,11 +2,12 @@ from pathlib import Path
 import logging
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 
 from OCR.main import main, process_image_with_debug
-from camera_capture import CameraCaptureError, CameraCaptureService
-from card_data import (
+from services.camera_capture import CameraCaptureError, CameraCaptureService
+from services.card_data import (
     change_inventory as change_inventory_in_db,
     load_all_cards as load_all_cards_from_db,
     load_collection as load_collection_from_db,
@@ -14,7 +15,6 @@ from card_data import (
     load_missing_cards as load_missing_cards_from_db,
     update_inventory as update_inventory_in_db,
 )
-from screen_capture import ScreenCaptureError, ScreenCaptureService
 
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,6 @@ app = FastAPI()
 OCR_IMAGE_PATH = Path(__file__).resolve().parent / "OCR/images/1.jpg"
 CAPTURE_IMAGE_DIR = Path(__file__).resolve().parent / "OCR/images/captures"
 camera_capture_service = CameraCaptureService(CAPTURE_IMAGE_DIR)
-screen_capture_service = ScreenCaptureService(CAPTURE_IMAGE_DIR)
 
 
 class InventoryUpdate(BaseModel):
@@ -34,37 +33,57 @@ class OcrRequest(BaseModel):
     image_path: str | None = None
     source: str | None = None
     filename: str | None = None
+    camera_device_index: int = 0
+    camera_device_candidates: list[int] | None = None
+    camera_width: int | None = None
+    camera_height: int | None = None
+    camera_warmup_frames: int = 10
     debug: bool = False
+
+
+class CameraProbeRequest(BaseModel):
+    device_indices: list[int] = Field(default_factory=lambda: [0, 1, 2, 3, 4])
+    camera_width: int | None = None
+    camera_height: int | None = None
+    camera_warmup_frames: int = 5
 
 
 def capture_image_for_source(
     source: str,
     filename: str | None = None,
+    camera_device_index: int = 0,
+    camera_device_candidates: list[int] | None = None,
+    camera_width: int | None = None,
+    camera_height: int | None = None,
+    camera_warmup_frames: int = 10,
 ) -> Path:
     if source == "camera":
         try:
-            logger.info("Capturing image from default camera")
-            return camera_capture_service.capture_image(
+            device_indices = (
+                camera_device_candidates
+                if camera_device_candidates is not None
+                else [camera_device_index]
+            )
+            logger.info(
+                "Capturing image from camera device_indices=%s width=%s height=%s warmup_frames=%s",
+                device_indices,
+                camera_width,
+                camera_height,
+                camera_warmup_frames,
+            )
+            return camera_capture_service.capture_image_from_candidates(
+                device_indices=device_indices,
+                width=camera_width,
+                height=camera_height,
+                warmup_frames=camera_warmup_frames,
                 filename=filename,
             )
         except (CameraCaptureError, ValueError) as error:
             raise HTTPException(status_code=400, detail=str(error)) from error
 
-    if source == "screen":
-        try:
-            logger.info(
-                "Capturing laptop screen filename=%s",
-                filename,
-            )
-            return screen_capture_service.capture_screen(
-                filename=filename,
-            )
-        except (ScreenCaptureError, ValueError) as error:
-            raise HTTPException(status_code=400, detail=str(error)) from error
-
     raise HTTPException(
         status_code=400,
-        detail="Invalid OCR source. Use 'camera' or 'screen'.",
+        detail="Invalid OCR source. Use 'camera'.",
     )
 
 
@@ -144,6 +163,11 @@ def run_ocr(payload: OcrRequest):
             image_path = capture_image_for_source(
                 source=payload.source,
                 filename=payload.filename,
+                camera_device_index=payload.camera_device_index,
+                camera_device_candidates=payload.camera_device_candidates,
+                camera_width=payload.camera_width,
+                camera_height=payload.camera_height,
+                camera_warmup_frames=payload.camera_warmup_frames,
             )
         else:
             image_path = resolve_ocr_image_path(payload.image_path)
@@ -151,6 +175,55 @@ def run_ocr(payload: OcrRequest):
         raise HTTPException(status_code=404, detail=str(error)) from error
 
     return run_ocr_for_image(image_path, debug=payload.debug)
+
+
+@app.post("/camera/probe")
+def probe_cameras(payload: CameraProbeRequest):
+    return {
+        "results": camera_capture_service.probe_devices(
+            device_indices=payload.device_indices,
+            width=payload.camera_width,
+            height=payload.camera_height,
+            warmup_frames=payload.camera_warmup_frames,
+        )
+    }
+
+
+@app.get("/camera/stream")
+def stream_camera(
+    camera_device_index: int = 0,
+    camera_device_candidates: str | None = None,
+    camera_width: int | None = None,
+    camera_height: int | None = None,
+    camera_warmup_frames: int = 10,
+    fps: float = 10.0,
+    jpeg_quality: int = 85,
+):
+    try:
+        device_indices = None
+        if camera_device_candidates:
+            device_indices = [
+                int(candidate.strip())
+                for candidate in camera_device_candidates.split(",")
+                if candidate.strip()
+            ]
+
+        stream = camera_capture_service.mjpeg_stream(
+            device_index=camera_device_index,
+            device_indices=device_indices,
+            width=camera_width,
+            height=camera_height,
+            warmup_frames=camera_warmup_frames,
+            fps=fps,
+            jpeg_quality=jpeg_quality,
+        )
+    except (CameraCaptureError, ValueError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    return StreamingResponse(
+        stream,
+        media_type="multipart/x-mixed-replace; boundary=frame",
+    )
 
 
 @app.get("/cards")
