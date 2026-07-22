@@ -6,3 +6,10 @@ __pycache__/
 
 # Ignore Data Folder
 data/
+
+# Ignore Model Weights
+src/classification/models/checkpoints/
+src/representation_learning/models/checkpoints/
+
+*.pth
+**/checkpoints/

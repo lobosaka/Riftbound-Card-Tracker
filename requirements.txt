@@ -1,0 +1,9 @@
+beautifulsoup4==4.15.0
+pandas==3.0.3
+Pillow==12.3.0
+plotly==6.9.0
+pytorch_metric_learning==2.9.0
+Requests==2.34.2
+streamlit==1.60.0
+torch==2.13.0
+torchvision==0.28.0
