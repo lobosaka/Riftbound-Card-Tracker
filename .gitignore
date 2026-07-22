@@ -8,4 +8,8 @@ __pycache__/
 data/
 
 # Ignore Model Weights
-src/models/checkpoints/
+src/classification/models/checkpoints/
+src/representation_learning/models/checkpoints/
+
+*.pth
+**/checkpoints/

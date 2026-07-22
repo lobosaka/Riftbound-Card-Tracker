@@ -5,8 +5,8 @@ import os
 import json
 from PIL import Image
 # Own Modules
-from src.models.backbone import get_resnet50_model, get_normalization_params
-from src.dataset.dataloader import SquarePadding
+from src.classification.models.backbone import get_resnet50_model, get_normalization_params
+from src.classification.dataset.dataloader import SquarePadding
 
 # Get ResNet50 Model
 model = get_resnet50_model(num_classes=960)

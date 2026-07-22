@@ -7,8 +7,8 @@ import torch.optim as optim
 import torch.nn as nn
 from torch.optim.lr_scheduler import CosineAnnealingLR
 # Own Modules
-from src.models.backbone import get_resnet50_model, get_normalization_params
-from src.dataset.dataloader import RiftboundDataset, create_card_dict, augmentation, padding
+from src.classification.models.backbone import get_resnet50_model, get_normalization_params
+from src.classification.dataset.dataloader import RiftboundDataset, create_card_dict, augmentation, padding
 
 create_card_dict()
 
