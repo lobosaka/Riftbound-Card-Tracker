@@ -1,3 +1,24 @@
+"""Image preparation utilities for the card OCR pipeline.
+
+This module prepares raw card photos for OCR. It first loads images into a
+consistent RGB NumPy array so the rest of the pipeline always receives the same
+input format. It then tries to detect the card inside the full photo and remove
+unnecessary background by rectifying the card into a flat, front-facing view.
+
+Card detection works by converting the image from RGB to HSV, because darkness
+and saturation are easier to threshold there than in RGB. Pixels that are dark
+enough or saturated enough are kept in a binary mask, which is used as a rough
+foreground estimate for the card. Morphological closing fills small holes and
+connects gaps in that mask so the card region becomes a more solid shape.
+
+After that, the processor finds contours in the mask, assumes the largest
+contour is the card, fits a rotated rectangle around it, and extracts four
+corner points. Those corners are passed into OpenCV's perspective transform so
+the card can be warped into a normalized view. Later OCR steps can then crop
+stable footer regions, try multiple preprocessing variants, and read the card
+code more reliably.
+"""
+
 from pathlib import Path
 
 import cv2
@@ -27,6 +48,7 @@ class CardImageProcessor:
         return candidates[0]
 
     def load_rgb_image(self, image_path):
+        """Load the input file into a normalized RGB NumPy array."""
         with Image.open(image_path) as image:
             return np.array(image.convert("RGB"))
 
@@ -123,6 +145,14 @@ class CardImageProcessor:
         return ordered
 
     def extract_card(self, photo_rgb):
+        """Detect the card in the photo and warp it into a flat front-facing view.
+
+        The input is converted to HSV so we can threshold dark or saturated
+        pixels more reliably than in RGB. That threshold becomes a binary mask
+        where likely card pixels stay white and likely background pixels turn
+        black. Morphological closing then fills small holes and reconnects gaps
+        before contour detection.
+        """
         hsv = cv2.cvtColor(photo_rgb, cv2.COLOR_RGB2HSV)
         saturation = hsv[:, :, 1]
         value = hsv[:, :, 2]
@@ -136,6 +166,8 @@ class CardImageProcessor:
         if not contours:
             raise RuntimeError("Could not detect card contour")
 
+        # Fit a rotated rectangle around the largest contour and use its four
+        # corners as the source quad for perspective correction.
         contour = max(contours, key=cv2.contourArea)
         box = cv2.boxPoints(cv2.minAreaRect(contour))
         source = self.order_quad(box)

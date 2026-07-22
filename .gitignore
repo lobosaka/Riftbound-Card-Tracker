@@ -14,3 +14,4 @@ src/OCR/images/
 pilot/trash
 
 .DS_Store
+.cache
