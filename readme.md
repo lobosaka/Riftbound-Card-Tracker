@@ -5,7 +5,7 @@
 Run the API with:
 
 ```bash
-python3 -m src.api
+python3 src/api
 ```
 
 ### `POST /ocr`
