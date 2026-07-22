@@ -52,7 +52,7 @@ inference_transforms = transforms.Compose([
 ])
 
 gallery_dir = 'data/card_images'
-query_image_name = 'Bild_1.jpeg'
+query_image_name = 'sumpworks_map1.jpeg'
 query_image_path = os.path.join('data/inference_images/', query_image_name)
 
 gallery_embeddings, gallery_names = build_gallery(

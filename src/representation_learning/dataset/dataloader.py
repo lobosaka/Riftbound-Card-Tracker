@@ -72,12 +72,18 @@ class ContrastiveTransforms(object):
         img_j = self.transforms(x)
         return img_i, img_j
 
+
+
 class RiftboundDataset(Dataset):
-    def __init__(self, image_dir, card_dict, transforms=None):
+    def __init__(self, image_dir, card_dict, json_path='data/split.json', split='train', transforms=None):
         self.image_dir = image_dir
         self.card_dict = card_dict
-        self.filenames = sorted([f for f in os.listdir(image_dir)])
         self.transforms = transforms if transforms else transforms.ToTensor()
+
+        with open(json_path, 'r', encoding='utf-8') as f:
+            split_data = json.load(f)
+
+        self.filenames = split_data[split]
 
     def __len__(self):
         return len(self.filenames)

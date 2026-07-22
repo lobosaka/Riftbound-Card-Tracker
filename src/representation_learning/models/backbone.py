@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torchvision.models as models
+import torch.nn.functional as F
 
 def get_normalization_params(model='ResNet50'):
     if model == "ResNet50":
@@ -31,6 +32,8 @@ class ResNet(nn.Module):
         features = self.backbone(x)
         # Pass features of last hidden layer of backbone through projection head
         out = self.head(features)
+        # L2-Normalzation of the Output-Embeddings aus dem Projection Head
+        out = F.normalize(out, p=2, dim=1)
         return out
 
 

@@ -9,5 +9,5 @@ the pictures. This is mandatory for future use in CNNs.
 The commands for the terminal:
 
 1. python -m src.db.scraper (optional)
-2. python -m src.db.picture_loader.py
+2. python -m src.db.picture_loader
 3. python -m src.trans.transform
