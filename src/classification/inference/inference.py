@@ -16,10 +16,11 @@ from src.classification.models.backbone import (
 MODEL = get_resnet50_model(num_classes=960)
 WEIGHTS_PATH = r"src/models/checkpoints/riftbound_resnet50_weights.pth"
 
-if os.path.exists(WEIGHTS_PATH):
-  MODEL.load_state_dict(
-      torch.load(WEIGHTS_PATH, map_location=torch.device("cpu"))
-  )
+if not os.path.exists(WEIGHTS_PATH):
+  raise FileNotFoundError(f"Model weights not found at {WEIGHTS_PATH}")
+MODEL.load_state_dict(
+    torch.load(WEIGHTS_PATH, map_location=torch.device("cpu"), weights_only=True)
+)
 MODEL.eval()
 
 MEAN, STD = get_normalization_params("ResNet50")

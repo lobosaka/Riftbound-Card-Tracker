@@ -37,10 +37,11 @@ def build_gallery(model, image_dir, transform):
 RL_MODEL = ResNet()
 RL_WEIGHTS_PATH = r"src/representation_learning/models/checkpoints/riftbound_resnet50_weights_RL.pth"
 
-if os.path.exists(RL_WEIGHTS_PATH):
-  RL_MODEL.load_state_dict(
-      torch.load(RL_WEIGHTS_PATH, map_location=torch.device("cpu"))
-  )
+if not os.path.exists(RL_WEIGHTS_PATH):
+  raise FileNotFoundError(f"RL model weights not found at {RL_WEIGHTS_PATH}")
+RL_MODEL.load_state_dict(
+    torch.load(RL_WEIGHTS_PATH, map_location=torch.device("cpu"), weights_only=True)
+)
 RL_MODEL.eval()
 
 RL_MEAN, RL_STD = get_normalization_params("ResNet50")
@@ -63,6 +64,7 @@ else:
   RL_GALLERY_EMBEDDINGS, RL_GALLERY_NAMES = build_gallery(
       RL_MODEL, GALLERY_DIR, RL_TRANSFORMS
   )
+  os.makedirs(os.path.dirname(CACHE_PATH) or ".", exist_ok=True)
   torch.save(
       {"embeddings": RL_GALLERY_EMBEDDINGS, "names": RL_GALLERY_NAMES},
       CACHE_PATH,
@@ -101,4 +103,4 @@ if __name__ == '__main__':
     result = predict_representation_learning(query_img)
 
   print(f"Gefundene Karte: {result['card_name']}")
-  print(f"Ähnlichkeit: {result['similarity']:.2f}%")
+  print(f"Ähnlichkeit: {result['confidence']:.2f}%")
