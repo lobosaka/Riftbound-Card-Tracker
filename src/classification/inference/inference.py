@@ -14,7 +14,7 @@ from src.classification.models.backbone import (
 
 # --- Classification Pipeline Setup ---
 MODEL = get_resnet50_model(num_classes=960)
-WEIGHTS_PATH = r"src/models/checkpoints/riftbound_resnet50_weights.pth"
+WEIGHTS_PATH = r"src/classification/models/checkpoints/riftbound_resnet50_weights.pth"
 
 if not os.path.exists(WEIGHTS_PATH):
   raise FileNotFoundError(f"Model weights not found at {WEIGHTS_PATH}")
@@ -63,7 +63,7 @@ def predict_classification(image: Image.Image) -> dict:
 
 
 if __name__ == "__main__":
-  query_image_name = "Bild_1.jpeg"
+  query_image_name = "sumpworks_map1.jpeg"
   query_image_path = os.path.join("data/inference_images/", query_image_name)
 
   print(f"Lade Suchbild: {query_image_name}...")
