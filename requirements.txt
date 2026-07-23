@@ -12,3 +12,11 @@ streamlit==1.59.2
 torch==2.12.1
 torchvision==0.27.1
 uvicorn==0.51.0
+pandas==3.0.3
+Pillow==12.3.0
+plotly==6.9.0
+pytorch_metric_learning==2.9.0
+Requests==2.34.2
+streamlit==1.60.0
+torch==2.13.0
+torchvision==0.28.0

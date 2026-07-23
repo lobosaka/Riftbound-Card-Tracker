@@ -26,6 +26,20 @@ def check_distinct_ratio_mode():
     print(f"Distinct Ratios: {distinct_ratio}")
     print(f"Distinct Modes: {distinct_mode}")
 
+def padding(image_path):
+    with Image.open(image_path) as img:
+        img_rgb = img.convert('RGB')
+        width, height= img_rgb.size
+    max_side = max(width, height)
+    # Create new symmetric picture with black pixels
+    new_img = Image.new("RGB", (max_side, max_side), (0, 0, 0))
+    # Calculate position of the picture from left and top to center
+    left = (max_side - width) // 2
+    top = (max_side - height) // 2
+    # Put original picture on top of new picture with left and top margins as defined
+    new_img.paste(img_rgb, (left, top))
+    return new_img
+
 def transform_pictures():
 
     '''
@@ -43,17 +57,7 @@ def transform_pictures():
         i += 1
 
         file_path = os.path.join(card_dir, card)
-        with Image.open(file_path) as img:
-            img_rgb = img.convert('RGB')
-            width, height = img_rgb.size
-        max_side = max(width, height)
-        # Create new symmetric picture with black pixels
-        new_img = Image.new("RGB", (max_side, max_side), (0, 0, 0))
-        # Calculate position of the picture from left and top to center
-        left = (max_side - width) // 2
-        top = (max_side - height) // 2
-        # Put original picture on top of new picture with left and top margins as defined
-        new_img.paste(img_rgb, (left, top))
+        new_img = padding(file_path)
         # Downsample new image to 224 x 224 pixels with LANCZOS algorithm
         final_img = new_img.resize((224, 224), Image.Resampling.LANCZOS)
         output_path = os.path.join(output_dir, card)
@@ -63,5 +67,6 @@ def transform_pictures():
             print(f"{i} Karten transformiert!")
 
 
-#check_distinct_ratio_mode()
-transform_pictures()
+if __name__ == '__main__':
+    #check_distinct_ratio_mode()
+    transform_pictures()
