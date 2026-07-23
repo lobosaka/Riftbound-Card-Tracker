@@ -9,6 +9,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from pytorch_metric_learning import losses
 import torchvision.transforms as transforms
 from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
+import faiss
 import torch.nn.functional as F
 # Own Modules
 from src.representation_learning.models.backbone import ResNet, get_normalization_params
