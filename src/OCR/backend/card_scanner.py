@@ -28,6 +28,7 @@ returns the strongest remaining match.
 """
 
 from pathlib import Path
+import re
 
 import numpy as np
 from .card_code_parser import CardCodeParser
@@ -54,48 +55,33 @@ class CardScanner:
         self.parser = parser
         self.image_processor = image_processor
 
-    def extract_code_from_photo(self, image_path):
+    def extract_code_from_photo(self, image_path, debug_variant_dir=None):
         photo = self.image_processor.load_rgb_image(image_path)
-        candidates = self.collect_ocr_candidates(photo)
+        candidates = self.collect_ocr_candidates(photo, debug_variant_dir=debug_variant_dir)
         return self.choose_best_candidate(candidates), candidates
 
-    def collect_ocr_candidates(self, photo_rgb):
+    def collect_ocr_candidates(self, photo_rgb, debug_variant_dir=None):
         candidates = []
+        attempted_images = []
 
         for source, image in self.iter_candidate_images(photo_rgb):
+            attempted_images.append((source, image))
             for code in self.run_code_ocr(image):
                 candidate = ScanCandidate(source=source, code=code)
                 candidates.append(candidate)
                 # Stop as soon as one OCR result maps to exactly one known card.
                 if self.is_verified_code(code):
+                    self.save_attempted_variants(debug_variant_dir, attempted_images)
                     return candidates
 
+        self.save_attempted_variants(debug_variant_dir, attempted_images)
         return candidates
 
     def iter_candidate_images(self, photo_rgb):
-        images = []
-
-        # Start with the rectified card if extraction worked, but keep the
-        # original photo as a fallback when the geometric correction is wrong or
-        # unavailable.
-        for card_variant in self.image_processor.try_extract_card_variants(photo_rgb):
-            # Try both upright and upside-down orientations before cropping the
-            # likely footer regions that contain the printed card code.
-            for oriented_card in self.image_processor.iter_oriented_cards(card_variant):
-                for code_region in self.image_processor.crop_code_regions(oriented_card.image):
-                    # Each crop is expanded into several OCR-friendly renderings
-                    # so the backend can try different contrast and threshold
-                    # conditions on the same physical code area.
-                    for preprocess_variant in self.image_processor.preprocess_variants(code_region.image):
-                        source = self.build_source_name(
-                            card_variant.name,
-                            oriented_card.name,
-                            code_region.name,
-                            preprocess_variant.name,
-                        )
-                        images.append((source, preprocess_variant.image))
-
-        return images
+        # Debug mode: send the full photo directly into the OCR model once,
+        # without rectification, orientation variants, footer crops, or extra
+        # preprocessing.
+        return [("photo/native/full/raw", photo_rgb)]
 
     def is_verified_code(self, code):
         return len(self.repository.verify_code(code)) == 1
@@ -133,3 +119,20 @@ class CardScanner:
             f"{region_variant}/"
             f"{preprocess_variant}"
         )
+
+    def save_attempted_variants(self, debug_variant_dir, attempted_images):
+        if debug_variant_dir is None or len(attempted_images) <= 1:
+            return
+
+        output_dir = Path(debug_variant_dir).expanduser().resolve()
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        for index, (source, image) in enumerate(attempted_images, start=1):
+            filename = f"{index:03d}_{self.slugify_source(source)}.png"
+            self.image_processor.save_debug_image(output_dir / filename, image)
+
+    @staticmethod
+    def slugify_source(source):
+        slug = source.replace("/", "__")
+        slug = re.sub(r"[^A-Za-z0-9_.-]+", "_", slug)
+        return slug.strip("_")

@@ -52,6 +52,27 @@ class CardImageProcessor:
         with Image.open(image_path) as image:
             return np.array(image.convert("RGB"))
 
+    def export_card_debug(self, image_path, output_dir):
+        """Save card-extraction debug artifacts for one source image."""
+        image_file = Path(image_path).expanduser().resolve()
+        output_path = Path(output_dir).expanduser().resolve()
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        photo_rgb = self.load_rgb_image(image_file)
+        self.save_debug_image(output_path / "original.png", photo_rgb)
+
+        try:
+            debug = self.extract_card_debug(photo_rgb)
+        except RuntimeError as error:
+            (output_path / "error.txt").write_text(f"{error}\n", encoding="utf-8")
+            return {"status": "error", "message": str(error), "output_dir": str(output_path)}
+
+        self.save_debug_image(output_path / "mask.png", debug["mask"])
+        self.save_debug_image(output_path / "contour_overlay.png", debug["overlay"])
+        self.save_debug_image(output_path / "rectified.png", debug["rectified"])
+
+        return {"status": "ok", "output_dir": str(output_path)}
+
     def iter_image_files(self, image_dir):
         return [
             image_file
@@ -153,6 +174,11 @@ class CardImageProcessor:
         black. Morphological closing then fills small holes and reconnects gaps
         before contour detection.
         """
+        debug = self.extract_card_debug(photo_rgb)
+        return debug["rectified"]
+
+    def extract_card_debug(self, photo_rgb):
+        """Return intermediate artifacts for the card-extraction stage."""
         hsv = cv2.cvtColor(photo_rgb, cv2.COLOR_RGB2HSV)
         saturation = hsv[:, :, 1]
         value = hsv[:, :, 2]
@@ -171,6 +197,7 @@ class CardImageProcessor:
         contour = max(contours, key=cv2.contourArea)
         box = cv2.boxPoints(cv2.minAreaRect(contour))
         source = self.order_quad(box)
+        overlay = self.draw_detected_card(photo_rgb, contour, source)
 
         width = int(max(np.linalg.norm(source[1] - source[0]), np.linalg.norm(source[2] - source[3])))
         height = int(max(np.linalg.norm(source[3] - source[0]), np.linalg.norm(source[2] - source[1])))
@@ -179,4 +206,26 @@ class CardImageProcessor:
             dtype=np.float32,
         )
         matrix = cv2.getPerspectiveTransform(source, destination)
-        return cv2.warpPerspective(photo_rgb, matrix, (width, height))
+        rectified = cv2.warpPerspective(photo_rgb, matrix, (width, height))
+        return {
+            "mask": mask,
+            "overlay": overlay,
+            "rectified": rectified,
+        }
+
+    @staticmethod
+    def draw_detected_card(photo_rgb, contour, source):
+        overlay = photo_rgb.copy()
+        cv2.drawContours(overlay, [contour], -1, (0, 255, 0), 6)
+        cv2.polylines(overlay, [source.astype(np.int32)], True, (255, 0, 0), 6)
+        for x_coord, y_coord in source.astype(np.int32):
+            cv2.circle(overlay, (x_coord, y_coord), 10, (255, 255, 0), -1)
+        return overlay
+
+    @staticmethod
+    def save_debug_image(image_path, image):
+        image_file = Path(image_path)
+        if image.ndim == 2:
+            Image.fromarray(image).save(image_file)
+            return
+        Image.fromarray(image.astype(np.uint8), mode="RGB").save(image_file)
