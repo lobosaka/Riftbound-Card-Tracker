@@ -21,7 +21,6 @@ else:
     from .backend.ocr_backend import describe_ocr_backend
 
 
-
 def build_scanner():
     image_processor = CardImageProcessor()
     repository = CardRepository()
@@ -29,39 +28,44 @@ def build_scanner():
     return CardScanner(repository, parser, image_processor)
 
 
-def process_image(image_path):
+def resolve_image_file(image_path):
     image_file = Path(image_path).expanduser().resolve()
     if not image_file.exists():
         raise FileNotFoundError(f"Image not found: {image_file}")
     if not image_file.is_file():
         raise ValueError(f"Expected an image file path, got: {image_file}")
+    return image_file
+
+
+def serialize_candidates(candidates):
+    return [
+        {"source": candidate.source, "code": candidate.code}
+        for candidate in candidates
+    ]
+
+
+def process_image(image_path, emit_result=True):
+    image_file = resolve_image_file(image_path)
 
     scanner = build_scanner()
     code, candidates = scanner.extract_code_from_photo(str(image_file))
-    scanner.print_result(image_file, code, candidates)
+    if emit_result:
+        scanner.print_result(image_file, code, candidates)
     return code, candidates
 
 
 def process_image_with_debug(image_path):
-    image_file = Path(image_path).expanduser().resolve()
-    if not image_file.exists():
-        raise FileNotFoundError(f"Image not found: {image_file}")
-    if not image_file.is_file():
-        raise ValueError(f"Expected an image file path, got: {image_file}")
+    image_file = resolve_image_file(image_path)
 
     scanner = build_scanner()
     started_at = perf_counter()
     code, candidates = scanner.extract_code_from_photo(str(image_file))
     elapsed_ms = round((perf_counter() - started_at) * 1000, 2)
-    scanner.print_result(image_file, code, candidates)
 
     return {
         "image_path": str(image_file),
         "code": code,
-        "candidates": [
-            {"source": candidate.source, "code": candidate.code}
-            for candidate in candidates
-        ],
+        "candidates": serialize_candidates(candidates),
         "debug": {
             "elapsed_ms": elapsed_ms,
             "candidate_count": len(candidates),

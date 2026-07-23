@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import re
 import sys
 from pathlib import Path
@@ -9,12 +10,11 @@ if str(SRC_ROOT) not in sys.path:
 
 from services.card_data import load_cards_for_code_index
 
-
+@dataclass(frozen=True)
 class CardRecord:
-    def __init__(self, id, name, public_code):
-        self.id = id
-        self.name = name
-        self.public_code = public_code
+    id: str
+    name: str
+    public_code: str
 
 
 class CardRepository:

@@ -3,9 +3,9 @@ import logging
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from OCR.main import main, process_image_with_debug
+from OCR.main import process_image, process_image_with_debug
 from services.camera_capture import CameraCaptureError, CameraCaptureService
 from services.card_data import (
     change_inventory as change_inventory_in_db,
@@ -20,8 +20,8 @@ from services.card_data import (
 logger = logging.getLogger(__name__)
 app = FastAPI()
 OCR_IMAGE_PATH = Path(__file__).resolve().parent / "OCR/images/1.jpg"
-CAPTURE_IMAGE_DIR = Path(__file__).resolve().parent / "OCR/images/captures"
-camera_capture_service = CameraCaptureService(CAPTURE_IMAGE_DIR)
+camera_capture_service = CameraCaptureService()
+CARD_NOT_FOUND_DETAIL = "Es wurde keine Karte mit der ID {card_id!r} gefunden."
 
 
 class InventoryUpdate(BaseModel):
@@ -31,83 +31,27 @@ class InventoryUpdate(BaseModel):
 
 class OcrRequest(BaseModel):
     image_path: str | None = None
-    source: str | None = None
-    filename: str | None = None
-    camera_device_index: int = 0
-    camera_device_candidates: list[int] | None = None
-    camera_width: int | None = None
-    camera_height: int | None = None
-    camera_warmup_frames: int = 10
     debug: bool = False
 
 
-class CameraProbeRequest(BaseModel):
-    device_indices: list[int] = Field(default_factory=lambda: [0, 1, 2, 3, 4])
-    camera_width: int | None = None
-    camera_height: int | None = None
-    camera_warmup_frames: int = 5
+def bad_request(detail: str) -> HTTPException:
+    return HTTPException(status_code=400, detail=detail)
 
 
-def capture_image_for_source(
-    source: str,
-    filename: str | None = None,
-    camera_device_index: int = 0,
-    camera_device_candidates: list[int] | None = None,
-    camera_width: int | None = None,
-    camera_height: int | None = None,
-    camera_warmup_frames: int = 10,
-) -> Path:
-    if source == "camera":
-        try:
-            device_indices = (
-                camera_device_candidates
-                if camera_device_candidates is not None
-                else [camera_device_index]
-            )
-            logger.info(
-                "Capturing image from camera device_indices=%s width=%s height=%s warmup_frames=%s",
-                device_indices,
-                camera_width,
-                camera_height,
-                camera_warmup_frames,
-            )
-            return camera_capture_service.capture_image_from_candidates(
-                device_indices=device_indices,
-                width=camera_width,
-                height=camera_height,
-                warmup_frames=camera_warmup_frames,
-                filename=filename,
-            )
-        except (CameraCaptureError, ValueError) as error:
-            raise HTTPException(status_code=400, detail=str(error)) from error
-
-    raise HTTPException(
-        status_code=400,
-        detail="Invalid OCR source. Use 'camera'.",
-    )
+def not_found(detail: str) -> HTTPException:
+    return HTTPException(status_code=404, detail=detail)
 
 
-def get_latest_captured_image() -> Path:
-    image_files = [
-        image_file
-        for image_file in CAPTURE_IMAGE_DIR.iterdir()
-        if image_file.is_file()
-    ]
-    if not image_files:
-        raise FileNotFoundError(
-            "No captured images found. Capture an image first or provide image_path explicitly."
-        )
-    return max(image_files, key=lambda image_file: image_file.stat().st_mtime)
+def get_default_ocr_image_path() -> Path:
+    return OCR_IMAGE_PATH
 
 
 def resolve_ocr_image_path(image_path: str | None) -> Path:
-    if image_path is not None:
-        resolved_path = Path(image_path).expanduser().resolve()
-    else:
-        try:
-            resolved_path = get_latest_captured_image()
-        except FileNotFoundError:
-            resolved_path = OCR_IMAGE_PATH
+    resolved_path = (
+        Path(image_path).expanduser().resolve()
+        if image_path is not None
+        else get_default_ocr_image_path()
+    )
 
     if not resolved_path.exists() or not resolved_path.is_file():
         raise FileNotFoundError(f"Image file not found: {resolved_path}")
@@ -122,7 +66,7 @@ def run_ocr_for_image(image_path: Path, debug: bool = False):
         if debug:
             result = process_image_with_debug(str(image_path))
         else:
-            code, candidates = main(str(image_path))
+            code, candidates = process_image(str(image_path), emit_result=False)
             result = {
                 "image_path": str(image_path),
                 "code": code,
@@ -152,44 +96,15 @@ def run_ocr_for_image(image_path: Path, debug: bool = False):
 
 @app.post("/ocr")
 def run_ocr(payload: OcrRequest):
-    if payload.image_path is not None and payload.source is not None:
-        raise HTTPException(
-            status_code=400,
-            detail="Provide either image_path or source, not both.",
-        )
-
     try:
-        if payload.source is not None:
-            image_path = capture_image_for_source(
-                source=payload.source,
-                filename=payload.filename,
-                camera_device_index=payload.camera_device_index,
-                camera_device_candidates=payload.camera_device_candidates,
-                camera_width=payload.camera_width,
-                camera_height=payload.camera_height,
-                camera_warmup_frames=payload.camera_warmup_frames,
-            )
-        else:
-            image_path = resolve_ocr_image_path(payload.image_path)
+        image_path = resolve_ocr_image_path(payload.image_path)
     except FileNotFoundError as error:
-        raise HTTPException(status_code=404, detail=str(error)) from error
+        raise not_found(str(error)) from error
 
     return run_ocr_for_image(image_path, debug=payload.debug)
 
 
-@app.post("/camera/probe")
-def probe_cameras(payload: CameraProbeRequest):
-    return {
-        "results": camera_capture_service.probe_devices(
-            device_indices=payload.device_indices,
-            width=payload.camera_width,
-            height=payload.camera_height,
-            warmup_frames=payload.camera_warmup_frames,
-        )
-    }
-
-
-@app.get("/camera/stream")
+@app.get("/stream")
 def stream_camera(
     camera_device_index: int = 0,
     camera_device_candidates: str | None = None,
@@ -218,7 +133,7 @@ def stream_camera(
             jpeg_quality=jpeg_quality,
         )
     except (CameraCaptureError, ValueError) as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
+        raise bad_request(str(error)) from error
 
     return StreamingResponse(
         stream,
@@ -233,10 +148,7 @@ def load_all_cards(
 ):
     if stats:
         if inventory is not None:
-            raise HTTPException(
-                status_code=400,
-                detail="Statistics cannot be combined with inventory filters.",
-            )
+            raise bad_request("Statistics cannot be combined with inventory filters.")
         return load_collection_statistics_from_db()
 
     if inventory is None:
@@ -245,39 +157,24 @@ def load_all_cards(
         return load_collection_from_db()
     if inventory == "missing":
         return load_missing_cards_from_db()
-    raise HTTPException(
-        status_code=400,
-        detail="Invalid inventory filter. Use 'collection' or 'missing'.",
-    )
+    raise bad_request("Invalid inventory filter. Use 'collection' or 'missing'.")
+
+
 @app.put("/cards/{card_id}/inventory")
 def update_inventory(card_id: str, payload: InventoryUpdate):
     if payload.new_quantity is not None and payload.difference is not None:
-        raise HTTPException(
-            status_code=400,
-            detail="Provide either new_quantity or difference, not both.",
-        )
+        raise bad_request("Provide either new_quantity or difference, not both.")
 
     if payload.new_quantity is None and payload.difference is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Provide new_quantity or difference.",
-        )
+        raise bad_request("Provide new_quantity or difference.")
 
     if payload.new_quantity is not None:
         if payload.new_quantity < 0:
-            raise HTTPException(
-                status_code=400,
-                detail="Der Bestand darf nicht negativ sein.",
-            )
+            raise bad_request("Der Bestand darf nicht negativ sein.")
 
         rowcount = update_inventory_in_db(card_id, payload.new_quantity)
         if rowcount == 0:
-            raise HTTPException(
-                status_code=404,
-                detail=(
-                    f"Es wurde keine Karte mit der ID {card_id!r} gefunden."
-                ),
-            )
+            raise not_found(CARD_NOT_FOUND_DETAIL.format(card_id=card_id))
 
         inventory_count = payload.new_quantity
     else:
@@ -287,12 +184,7 @@ def update_inventory(card_id: str, payload: InventoryUpdate):
         )
 
     if inventory_count is None:
-        raise HTTPException(
-            status_code=404,
-            detail=(
-                f"Es wurde keine Karte mit der ID {card_id!r} gefunden."
-            ),
-        )
+        raise not_found(CARD_NOT_FOUND_DETAIL.format(card_id=card_id))
 
     return {
         "card_id": card_id,
