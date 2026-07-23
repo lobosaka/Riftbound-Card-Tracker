@@ -1,7 +1,4 @@
 import re
-from .card_repository import CardRepository
-
-
 
 class CardCodeParser:
     FULL_CODE_PATTERN = re.compile(

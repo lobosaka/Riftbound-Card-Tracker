@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-from pathlib import Path
 import sys
 import time
 from typing import Optional
@@ -12,59 +10,11 @@ class CameraCaptureError(RuntimeError):
 
 
 class CameraCaptureService:
-    def __init__(self, output_dir: Path):
-        self.output_dir = output_dir
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-
     @staticmethod
     def default_backend() -> int:
         if sys.platform == "darwin" and hasattr(cv2, "CAP_AVFOUNDATION"):
             return cv2.CAP_AVFOUNDATION
         return cv2.CAP_ANY
-
-    def capture_image(
-        self,
-        device_index: int = 0,
-        width: Optional[int] = None,
-        height: Optional[int] = None,
-        warmup_frames: int = 10,
-        filename: Optional[str] = None,
-        backend: Optional[int] = None,
-    ) -> Path:
-        if warmup_frames < 0:
-            raise ValueError("warmup_frames must be greater than or equal to 0")
-
-        output_path = self.output_dir / self.build_filename(filename)
-        camera, resolved_backend = self.open_camera(
-            device_index=device_index,
-            backend=backend,
-        )
-
-        try:
-            if width is not None:
-                camera.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-            if height is not None:
-                camera.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-
-            success, frame = self.read_frame(
-                camera=camera,
-                warmup_frames=warmup_frames,
-            )
-
-            if not success or frame is None:
-                raise CameraCaptureError(
-                    f"Camera device {device_index} did not return a frame. "
-                    f"Backend={resolved_backend}."
-                )
-
-            if not cv2.imwrite(str(output_path), frame):
-                raise CameraCaptureError(
-                    f"Failed to write captured image to {output_path}."
-                )
-
-            return output_path
-        finally:
-            camera.release()
 
     def open_camera(
         self,
@@ -188,84 +138,3 @@ class CameraCaptureService:
                     time.sleep(frame_interval_seconds)
         finally:
             camera.release()
-
-    def capture_image_from_candidates(
-        self,
-        device_indices: list[int],
-        width: Optional[int] = None,
-        height: Optional[int] = None,
-        warmup_frames: int = 10,
-        filename: Optional[str] = None,
-        backend: Optional[int] = None,
-    ) -> Path:
-        if not device_indices:
-            raise ValueError("device_indices must not be empty")
-
-        errors: list[str] = []
-        for device_index in device_indices:
-            try:
-                return self.capture_image(
-                    device_index=device_index,
-                    width=width,
-                    height=height,
-                    warmup_frames=warmup_frames,
-                    filename=filename,
-                    backend=backend,
-                )
-            except CameraCaptureError as error:
-                errors.append(f"{device_index}: {error}")
-
-        raise CameraCaptureError(
-            "Could not capture from any requested camera device. "
-            + " | ".join(errors)
-        )
-
-    def probe_devices(
-        self,
-        device_indices: list[int],
-        width: Optional[int] = None,
-        height: Optional[int] = None,
-        warmup_frames: int = 5,
-    ) -> list[dict[str, str | int | bool]]:
-        results: list[dict[str, str | int | bool]] = []
-
-        for device_index in device_indices:
-            probe_filename = f"probe_camera_{device_index}.jpg"
-            try:
-                output_path = self.capture_image(
-                    device_index=device_index,
-                    width=width,
-                    height=height,
-                    warmup_frames=warmup_frames,
-                    filename=probe_filename,
-                )
-                results.append(
-                    {
-                        "device_index": device_index,
-                        "ok": True,
-                        "image_path": str(output_path),
-                    }
-                )
-            except (CameraCaptureError, ValueError) as error:
-                results.append(
-                    {
-                        "device_index": device_index,
-                        "ok": False,
-                        "error": str(error),
-                    }
-                )
-
-        return results
-
-    @staticmethod
-    def build_filename(filename: Optional[str]) -> str:
-        if filename:
-            candidate = Path(filename).name
-            if not candidate:
-                raise ValueError("filename must not be empty")
-            if Path(candidate).suffix:
-                return candidate
-            return f"{candidate}.jpg"
-
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        return f"capture_{timestamp}.jpg"

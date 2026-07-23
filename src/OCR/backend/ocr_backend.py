@@ -42,7 +42,7 @@ def get_rapidocr():
     return RapidOCR()
 
 
-def run_rapidocr(image):
+def run_ocr(image):
     engine = get_rapidocr()
     if engine is None:
         return []
@@ -69,10 +69,6 @@ def run_rapidocr(image):
         )
 
     return observations
-
-
-def run_ocr(image):
-    return run_rapidocr(image)
 
 
 def describe_ocr_backend():
