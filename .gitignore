@@ -6,6 +6,16 @@ __pycache__/
 
 # Ignore Data Folder
 data/
+src/ogn_ocr/data/
+models/*.pt
+
+#Ignore images
+src/OCR/images/
+pilot/trash
+
+.DS_Store
+.cache
+src/OCR/debug_steps
 
 # Ignore Model Weights
 src/classification/models/checkpoints/
