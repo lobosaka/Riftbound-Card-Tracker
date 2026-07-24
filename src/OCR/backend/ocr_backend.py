@@ -69,13 +69,3 @@ def run_ocr(image):
         )
 
     return observations
-
-
-def describe_ocr_backend():
-    return {
-        "paddle_available": False,
-        "easyocr_available": False,
-        "tesseract_available": False,
-        "rapidocr_available": RapidOCR is not None,
-        "backend_order": ["rapidocr"],
-    }

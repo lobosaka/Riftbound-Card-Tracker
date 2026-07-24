@@ -1,12 +1,12 @@
 import logging
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import io
 from PIL import Image
 from classification.inference.inference import predict_classification
 
-from OCR.main import process_uploaded_image, run_ocr_for_image
+from OCR.main import process_uploaded_image
 from services.camera_capture import CameraCaptureError, CameraCaptureService
 from services.card_data import (
     change_inventory as change_inventory_in_db,
@@ -64,57 +64,23 @@ async def predict_rl(file: UploadFile = File(...)):
 
 @app.post("/predict/ocr")
 async def run_ocr(
-    request: Request,
-    file: UploadFile | None = File(None),
-    debug: bool = False,
+    file: UploadFile = File(...),
 ):
-    if file is not None:
-        contents = await file.read()
-        image = parse_upload_image(contents)
-
-        try:
-            return process_uploaded_image(
-                image=image,
-                filename=file.filename,
-                file_size_bytes=len(contents),
-                debug=debug,
-            )
-        except Exception as error:
-            logger.exception("OCR failed for uploaded image: %s", file.filename)
-            raise HTTPException(
-                status_code=500,
-                detail={
-                    "message": "OCR processing failed.",
-                    "image_path": file.filename,
-                    "error": str(error),
-                },
-            ) from error
+    contents = await file.read()
+    image = parse_upload_image(contents)
 
     try:
-        payload = await request.json()
-    except Exception as error:
-        raise bad_request(
-            "Provide either a multipart upload field named 'file' or a JSON body with 'image_path'."
-        ) from error
-
-    image_path = payload.get("image_path")
-    payload_debug = payload.get("debug", debug)
-    if image_path is None:
-        raise bad_request(
-            "Provide either a multipart upload field named 'file' or a JSON body with 'image_path'."
+        return process_uploaded_image(
+            image=image,
+            filename=file.filename,
         )
-
-    try:
-        return run_ocr_for_image(image_path=image_path, debug=payload_debug)
-    except FileNotFoundError as error:
-        raise not_found(str(error)) from error
     except Exception as error:
-        logger.exception("OCR failed for image request: %s", image_path)
+        logger.exception("OCR failed for uploaded image: %s", file.filename)
         raise HTTPException(
             status_code=500,
             detail={
                 "message": "OCR processing failed.",
-                "image_path": image_path,
+                "image_path": file.filename,
                 "error": str(error),
             },
         ) from error
