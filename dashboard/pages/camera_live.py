@@ -1,10 +1,8 @@
-from pathlib import Path
-
 import requests
 import streamlit as st
 import streamlit.components.v1 as components
 
-from config import PROJECT_ROOT, API_BASE_URL
+from config import API_BASE_URL
 
 
 st.title("Kamera Live")
@@ -167,27 +165,25 @@ captured_photo = st.camera_input(
 )
 
 if captured_photo is not None:
-    capture_dir = PROJECT_ROOT / "src/OCR/images/captures"
-    capture_dir.mkdir(parents=True, exist_ok=True)
-    image_path = capture_dir / "browser_camera_capture.jpg"
-    image_path.write_bytes(captured_photo.getvalue())
-
     st.image(
         captured_photo,
         caption="Aufgenommenes Bild",
         use_container_width=True,
     )
+    st.selectbox(
+        "Modellauswahl",
+        options=["OCR", "Classification", "Representation-Learning"],
+        key="model_selection",
+        help="Waehle das Modell aus, das für die Vorhersage verwendet werden soll.",
+    )
+    if st.session_state.model_selection:
+      model_response = requests.post(
+          f"{API_BASE_URL}/predict/{st.session_state.model_selection.lower().replace(' ', '-')}",
+          files={"file": captured_photo.getvalue()},
+          timeout=180,
+      )
+      model_response.raise_for_status()
+      model_result = model_response.json()
+      st.json(model_result)
 
-    if st.button("OCR für dieses Bild starten", type="primary"):
-        ocr_response = requests.post(
-            f"{API_BASE_URL}/ocr",
-            json={
-                "image_path": str(image_path),
-            },
-            timeout=180,
-        )
-        ocr_response.raise_for_status()
-        ocr_result = ocr_response.json()
 
-        st.success("OCR abgeschlossen")
-        st.json(ocr_result)
