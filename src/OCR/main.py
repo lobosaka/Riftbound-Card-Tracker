@@ -1,7 +1,9 @@
 from pathlib import Path
+import logging
 import sys
 from time import perf_counter
 
+import numpy as np
 
 if __package__ in (None, ""):
     SRC_ROOT = Path(__file__).resolve().parents[1]
@@ -21,6 +23,11 @@ else:
     from .backend.ocr_backend import describe_ocr_backend
 
 
+logger = logging.getLogger(__name__)
+OCR_IMAGES_DIR = Path(__file__).resolve().parent / "images"
+OCR_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+
+
 def build_scanner():
     image_processor = CardImageProcessor()
     repository = CardRepository()
@@ -35,6 +42,25 @@ def resolve_image_file(image_path):
     if not image_file.is_file():
         raise ValueError(f"Expected an image file path, got: {image_file}")
     return image_file
+
+
+def get_latest_ocr_image_path():
+    image_paths = [
+        path
+        for path in OCR_IMAGES_DIR.iterdir()
+        if path.is_file() and path.suffix.lower() in OCR_IMAGE_EXTENSIONS
+    ]
+
+    if not image_paths:
+        raise FileNotFoundError(f"No image files found in: {OCR_IMAGES_DIR}")
+
+    return max(image_paths, key=lambda path: path.stat().st_mtime)
+
+
+def resolve_ocr_image_path(image_path=None):
+    if image_path is None:
+        return get_latest_ocr_image_path()
+    return resolve_image_file(image_path)
 
 
 def serialize_candidates(candidates):
@@ -76,12 +102,59 @@ def process_image_with_debug(image_path):
     }
 
 
+def process_uploaded_image(image, filename=None, file_size_bytes=None, debug=False):
+    photo_rgb = np.array(image.convert("RGB"))
+
+    scanner = build_scanner()
+    started_at = perf_counter()
+    candidates = scanner.collect_ocr_candidates(photo_rgb)
+    code = scanner.choose_best_candidate(candidates)
+    elapsed_ms = round((perf_counter() - started_at) * 1000, 2)
+
+    result = {
+        "image_path": filename,
+        "code": code,
+        "candidates": serialize_candidates(candidates),
+    }
+
+    if debug:
+        result["debug"] = {
+            "elapsed_ms": elapsed_ms,
+            "candidate_count": len(candidates),
+            "selected_code_found": bool(code),
+            "file_size_bytes": file_size_bytes,
+            "ocr_backend": describe_ocr_backend(),
+        }
+
+    return result
+
+
+def run_ocr_for_image(image_path=None, debug=False):
+    resolved_path = resolve_ocr_image_path(image_path)
+    logger.info("Starting OCR for image: %s", resolved_path)
+
+    if debug:
+        result = process_image_with_debug(str(resolved_path))
+    else:
+        code, candidates = process_image(str(resolved_path), emit_result=False)
+        result = {
+            "image_path": str(resolved_path),
+            "code": code,
+            "candidates": serialize_candidates(candidates),
+        }
+
+    logger.info(
+        "Finished OCR for image: %s with %s candidates",
+        resolved_path,
+        len(result["candidates"]),
+    )
+    return result
+
+
 def main(image_path=None):
     if image_path is None:
         if len(sys.argv) < 2:
-            image_path = str(
-                Path(__file__).resolve().parent / "images/1.jpg"
-            )
+            image_path = str(get_latest_ocr_image_path())
         else:
             image_path = sys.argv[1]
 
