@@ -8,8 +8,8 @@ __pycache__/
 data/*
 
 !data/test_images
-!data/card_images
 !data/calibration_images
+!data/card_images.zip
 !data/card_to_label.json
 
 .DS_Store
