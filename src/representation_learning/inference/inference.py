@@ -1,12 +1,13 @@
 import os
+from pathlib import Path
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms as transforms
 from PIL import Image
 
-from src.representation_learning.dataset.dataloader import SquarePadding
-from src.representation_learning.models.backbone import (
+from representation_learning.dataset.dataloader import SquarePadding
+from representation_learning.models.backbone import (
     ResNet,
     get_normalization_params,
 )
@@ -35,9 +36,17 @@ def build_gallery(model, image_dir, transform):
 
 
 RL_MODEL = ResNet()
-RL_WEIGHTS_PATH = r"src/representation_learning/models/checkpoints/riftbound_resnet50_weights_RL.pth"
+BASE_DIR = Path(__file__).resolve().parents[3]
+RL_WEIGHTS_PATH = (
+    BASE_DIR
+    / "src"
+    / "representation_learning"
+    / "models"
+    / "checkpoints"
+    / "riftbound_resnet50_weights_RL.pth"
+)
 
-if not os.path.exists(RL_WEIGHTS_PATH):
+if not RL_WEIGHTS_PATH.exists():
   raise FileNotFoundError(f"RL model weights not found at {RL_WEIGHTS_PATH}")
 RL_MODEL.load_state_dict(
     torch.load(RL_WEIGHTS_PATH, map_location=torch.device("cpu"), weights_only=True)
@@ -52,10 +61,13 @@ RL_TRANSFORMS = transforms.Compose([
     transforms.Normalize(mean=RL_MEAN, std=RL_STD),
 ])
 
-CACHE_PATH = "data/gallery_cache.pt"
-GALLERY_DIR = "data/card_images"
+CACHE_PATH = BASE_DIR / "src" / "dataset" / "data" / "gallery_cache.pt"
+GALLERY_DIR = BASE_DIR / "src" / "dataset" / "data" / "card_images"
 
-if os.path.exists(CACHE_PATH):
+if not GALLERY_DIR.exists():
+  raise FileNotFoundError(f"Gallery directory not found at {GALLERY_DIR}")
+
+if CACHE_PATH.exists():
   cache = torch.load(CACHE_PATH, map_location="cpu", weights_only=False)
   RL_GALLERY_EMBEDDINGS = cache["embeddings"]
   RL_GALLERY_NAMES = cache["names"]
@@ -64,7 +76,7 @@ else:
   RL_GALLERY_EMBEDDINGS, RL_GALLERY_NAMES = build_gallery(
       RL_MODEL, GALLERY_DIR, RL_TRANSFORMS
   )
-  os.makedirs(os.path.dirname(CACHE_PATH) or ".", exist_ok=True)
+  CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
   torch.save(
       {"embeddings": RL_GALLERY_EMBEDDINGS, "names": RL_GALLERY_NAMES},
       CACHE_PATH,
@@ -96,7 +108,7 @@ def predict_representation_learning(image: Image.Image) -> dict:
 
 if __name__ == '__main__':
   query_image_name = 'Bild_1.jpeg'
-  query_image_path = os.path.join('data/inference_images/', query_image_name)
+  query_image_path = BASE_DIR / 'src' / 'dataset' / 'data' / 'inference_images' / query_image_name
 
   print(f'Lade Suchbild: {query_image_name}...')
   with Image.open(query_image_path) as query_img:
