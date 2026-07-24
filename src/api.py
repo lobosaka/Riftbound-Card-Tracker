@@ -70,6 +70,7 @@ async def run_ocr(
     image = parse_upload_image(contents)
 
     try:
+        # Entry point for OCR processing
         return process_uploaded_image(
             image=image,
             filename=file.filename,
