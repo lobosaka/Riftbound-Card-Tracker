@@ -61,8 +61,8 @@ RL_TRANSFORMS = transforms.Compose([
     transforms.Normalize(mean=RL_MEAN, std=RL_STD),
 ])
 
-CACHE_PATH = BASE_DIR / "src" / "dataset" / "data" / "gallery_cache.pt"
-GALLERY_DIR = BASE_DIR / "src" / "dataset" / "data" / "card_images"
+CACHE_PATH = BASE_DIR / "data" / "gallery_cache.pt"
+GALLERY_DIR = BASE_DIR / "data" / "card_images"
 
 if not GALLERY_DIR.exists():
   raise FileNotFoundError(f"Gallery directory not found at {GALLERY_DIR}")
