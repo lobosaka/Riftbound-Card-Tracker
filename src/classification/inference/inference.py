@@ -33,13 +33,14 @@ TRANSFORMS = transforms.Compose([
 ])
 
 # --- Label Mapping Setup ---
-JSON_PATH = "data/card_to_label.json"
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 CARD_DICT_REV = {}
+JSON_PATH = os.path.join(PROJECT_ROOT, "src", "dataset", "data", "card_to_label.json")
 
 if os.path.exists(JSON_PATH):
   with open(JSON_PATH, "r", encoding="utf-8") as f:
     card_dict = json.load(f)
-  CARD_DICT_REV = {v: k for k, v in card_dict.items()}
+  CARD_DICT_REV = {int(v): k for k, v in card_dict.items()}
 
 
 def predict_classification(image: Image.Image) -> dict:
