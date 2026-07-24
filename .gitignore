@@ -5,7 +5,21 @@ venv/
 __pycache__/
 
 # Ignore Data Folder
-data/
+src/dataset/data/card_images
+src/dataset/data/card_images_processed
+src/dataset/data/gallery_cache.pt
+
+src/ogn_ocr/data/
+
+models/*.pt
+
+#Ignore images
+src/OCR/images/
+pilot/trash
+
+.DS_Store
+.cache
+src/OCR/debug_steps
 
 # Ignore Model Weights
 src/classification/models/checkpoints/

@@ -6,15 +6,16 @@ import torch.nn.functional as F
 import torchvision.transforms as transforms
 from PIL import Image
 
-from src.classification.dataset.dataloader import SquarePadding
-from src.classification.models.backbone import (
+from classification.dataset.dataloader import SquarePadding
+from classification.models.backbone import (
     get_normalization_params,
     get_resnet50_model,
 )
 
 # --- Classification Pipeline Setup ---
 MODEL = get_resnet50_model(num_classes=960)
-WEIGHTS_PATH = r"src/classification/models/checkpoints/riftbound_resnet50_weights.pth"
+WD = os.getcwd()
+WEIGHTS_PATH = os.path.join(WD, "src", "classification", "models", "checkpoints", "riftbound_resnet50_weights.pth")
 
 if not os.path.exists(WEIGHTS_PATH):
   raise FileNotFoundError(f"Model weights not found at {WEIGHTS_PATH}")
@@ -32,13 +33,14 @@ TRANSFORMS = transforms.Compose([
 ])
 
 # --- Label Mapping Setup ---
-JSON_PATH = "data/card_to_label.json"
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 CARD_DICT_REV = {}
+JSON_PATH = os.path.join(PROJECT_ROOT, "src", "dataset", "data", "card_to_label.json")
 
 if os.path.exists(JSON_PATH):
   with open(JSON_PATH, "r", encoding="utf-8") as f:
     card_dict = json.load(f)
-  CARD_DICT_REV = {v: k for k, v in card_dict.items()}
+  CARD_DICT_REV = {int(v): k for k, v in card_dict.items()}
 
 
 def predict_classification(image: Image.Image) -> dict:
