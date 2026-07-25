@@ -35,7 +35,7 @@ TRANSFORMS = transforms.Compose([
 # --- Label Mapping Setup ---
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 CARD_DICT_REV = {}
-JSON_PATH = os.path.join(PROJECT_ROOT, "src", "dataset", "data", "card_to_label.json")
+JSON_PATH = os.path.join(PROJECT_ROOT, "data", "card_to_label.json")
 
 if os.path.exists(JSON_PATH):
   with open(JSON_PATH, "r", encoding="utf-8") as f:
