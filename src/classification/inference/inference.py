@@ -35,7 +35,7 @@ TRANSFORMS = transforms.Compose([
 # --- Label Mapping Setup ---
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 CARD_DICT_REV = {}
-JSON_PATH = os.path.join(PROJECT_ROOT, "src", "dataset", "data", "card_to_label.json")
+JSON_PATH = os.path.join(PROJECT_ROOT, "data", "card_to_label.json")
 
 if os.path.exists(JSON_PATH):
   with open(JSON_PATH, "r", encoding="utf-8") as f:
@@ -65,7 +65,7 @@ def predict_classification(image: Image.Image) -> dict:
 
 
 if __name__ == "__main__":
-  query_image_name = "Bild_1.jpeg"
+  query_image_name = "sumpworks_map1.jpeg"
   query_image_path = os.path.join("data/inference_images/", query_image_name)
 
   print(f"Lade Suchbild: {query_image_name}...")

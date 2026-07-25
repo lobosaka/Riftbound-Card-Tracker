@@ -5,15 +5,17 @@ venv/
 __pycache__/
 
 # Ignore Data Folder
-src/dataset/data/card_images
-src/dataset/data/card_images_processed
-src/dataset/data/gallery_cache.pt
+data/*
 
 
 models/*.pt
 
 #Ignore images
 src/OCR/images/
+!data/test_images
+!data/calibration_images
+!data/card_images.zip
+!data/card_to_label.json
 
 src/OCR/debug_steps
 .cache
