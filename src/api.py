@@ -5,6 +5,7 @@ from pydantic import BaseModel
 import io
 from PIL import Image
 from classification.inference.inference import predict_classification
+from services.logger import setup_logging
 
 from OCR.main import process_uploaded_image
 from services.camera_capture import CameraCaptureError, CameraCaptureService
@@ -19,6 +20,7 @@ from services.card_data import (
 
 
 logger = logging.getLogger(__name__)
+setup_logging(level=logging.DEBUG)
 app = FastAPI(title="Card Recognition API")
 camera_capture_service = CameraCaptureService()
 CARD_NOT_FOUND_DETAIL = "Es wurde keine Karte mit der ID {card_id!r} gefunden."
@@ -37,12 +39,18 @@ def not_found(detail: str) -> HTTPException:
     return HTTPException(status_code=404, detail=detail)
 
 def parse_upload_image(contents: bytes) -> Image.Image:
-  try:
-    img = Image.open(io.BytesIO(contents))
-    img.load()
-    return img
-  except Exception as e:
-    raise HTTPException(status_code=400, detail="Invalid image file uploaded.") from e
+    try:
+        img = Image.open(io.BytesIO(contents))
+        img.load()
+        logger.info(
+            "Uploaded image parsed successfully with format '%s' and size %s.",
+            getattr(img, "format", None),
+            getattr(img, "size", None),
+        )
+        return img
+    except Exception as error:
+        logger.warning("Failed to parse uploaded image.", exc_info=error)
+        raise HTTPException(status_code=400, detail="Invalid image file uploaded.") from error
 
 
 @app.post("/predict/classification")
@@ -66,15 +74,28 @@ async def predict_rl(file: UploadFile = File(...)):
 async def run_ocr(
     file: UploadFile = File(...),
 ):
+    logger.info("Received OCR request for file '%s'.", file.filename)
     contents = await file.read()
+    logger.debug(
+        "Read %d bytes from uploaded file '%s'.",
+        len(contents),
+        file.filename,
+    )
     image = parse_upload_image(contents)
 
     try:
         # Entry point for OCR processing
-        return process_uploaded_image(
+        response = process_uploaded_image(
             image=image,
             filename=file.filename,
+            logger=logger,
         )
+        logger.info(
+            "OCR request for file '%s' completed with best code '%s'.",
+            file.filename,
+            response.get("code") or "",
+        )
+        return response
     except Exception as error:
         logger.exception("OCR failed for uploaded image: %s", file.filename)
         raise HTTPException(
@@ -178,8 +199,4 @@ def update_inventory(card_id: str, payload: InventoryUpdate):
 if __name__ == "__main__":
     import uvicorn
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    )
     uvicorn.run(app, host="127.0.0.1", port=8000)
