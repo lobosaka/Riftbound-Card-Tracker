@@ -1,3 +1,7 @@
+"""
+This module provides functions to interact with the SQLite database containing card data.
+It includes functions to load all cards, load the user's collection, load missing cards,
+load collection statistics, and update inventory counts."""
 import sqlite3
 from contextlib import closing
 from pathlib import Path
@@ -8,6 +12,7 @@ DATABASE_PATH = PROJECT_ROOT / "riftbound_test_inventory.db"
 
 
 def check_database_exists() -> None:
+    # Ensure that the database file exists before attempting to connect to it
     if not DATABASE_PATH.exists():
         raise FileNotFoundError(
             f"Die Datenbank wurde nicht gefunden:\n{DATABASE_PATH}"
@@ -15,6 +20,7 @@ def check_database_exists() -> None:
 
 
 def get_connection() -> sqlite3.Connection:
+    # Ensure the database exists before establishing a connection
     check_database_exists()
 
     connection = sqlite3.connect(DATABASE_PATH)
@@ -23,6 +29,7 @@ def get_connection() -> sqlite3.Connection:
 
 
 def fetch_rows(query: str, parameters: tuple = ()) -> list[dict]:
+    # Fetch multiple rows from the database and return them as a list of dictionaries
     with closing(get_connection()) as connection:
         rows = connection.execute(query, parameters).fetchall()
 
@@ -30,6 +37,7 @@ def fetch_rows(query: str, parameters: tuple = ()) -> list[dict]:
 
 
 def fetch_row(query: str, parameters: tuple = ()) -> dict | None:
+    # Fetch a single row from the database and return it as a dictionary
     with closing(get_connection()) as connection:
         row = connection.execute(query, parameters).fetchone()
 
@@ -40,6 +48,7 @@ def fetch_row(query: str, parameters: tuple = ()) -> dict | None:
 
 
 def execute_write(query: str, parameters: tuple = ()) -> int:
+    # Execute a write operation (INSERT, UPDATE, DELETE) and return the number of affected rows
     with closing(get_connection()) as connection:
         cursor = connection.execute(query, parameters)
         connection.commit()
@@ -47,6 +56,7 @@ def execute_write(query: str, parameters: tuple = ()) -> int:
 
 
 def load_all_cards() -> list[dict]:
+    # Fetch all cards from the database and return them as a list of dictionaries
     query = """
         SELECT
             id,
@@ -81,6 +91,7 @@ def load_all_cards() -> list[dict]:
 
 
 def load_collection() -> list[dict]:
+    # Fetch all cards that are in the user's collection (inventory_count > 0) from the database
     query = """
         SELECT *
         FROM cards
@@ -92,6 +103,7 @@ def load_collection() -> list[dict]:
 
 
 def load_missing_cards() -> list[dict]:
+    # Fetch all cards that are missing from the user's collection (inventory_count = 0) from the database
     query = """
         SELECT *
         FROM cards
@@ -103,6 +115,7 @@ def load_missing_cards() -> list[dict]:
 
 
 def load_collection_statistics() -> dict:
+    # Fetch statistics about the user's card collection from the database
     query = """
         SELECT
             COUNT(*) AS total_cards,
@@ -134,6 +147,7 @@ def load_collection_statistics() -> dict:
 
 
 def load_cards_for_code_index() -> list[dict]:
+    # Command to fetch only the necessary fields for building the card code index
     query = """
         SELECT
             id,
@@ -147,6 +161,7 @@ def load_cards_for_code_index() -> list[dict]:
 
 
 def update_inventory(card_id: str, new_quantity: int) -> int:
+    # Update the inventory count for a specific card in the database
     query = """
         UPDATE cards
         SET inventory_count = ?
@@ -157,6 +172,7 @@ def update_inventory(card_id: str, new_quantity: int) -> int:
 
 
 def change_inventory(card_id: str, difference: int) -> int | None:
+    # Adjust the inventory count for a specific card by a given difference
     query = """
         UPDATE cards
         SET inventory_count = MAX(inventory_count + ?, 0)

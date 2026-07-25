@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 from functools import lru_cache
@@ -32,6 +33,11 @@ def _ensure_rgb_array(image):
     image_array = np.array(image)
     if image_array.ndim == 2:
         image_array = np.stack([image_array] * 3, axis=-1)
+    logging.getLogger(__name__).debug(
+        "Normalized OCR input image to array with shape %s and dtype %s.",
+        getattr(image_array, "shape", None),
+        getattr(image_array, "dtype", None),
+    )
     return image_array
 
 
@@ -39,27 +45,48 @@ def _ensure_rgb_array(image):
 def get_rapidocr():
     if RapidOCR is None:
         return None
+    logging.getLogger(__name__).debug("Initializing RapidOCR engine.")
     return RapidOCR()
 
 
-def run_ocr(image):
+def run_ocr(image, logger=None):
+    active_logger = logger or logging.getLogger(__name__)
     engine = get_rapidocr()
     if engine is None:
+        active_logger.warning("RapidOCR is not installed; returning no OCR observations.")
         return []
 
     image_array = _ensure_rgb_array(image)
+    active_logger.info(
+        "Running OCR on image array with shape %s.",
+        getattr(image_array, "shape", None),
+    )
     result = engine(image_array)
 
     observations = []
     txts = list(getattr(result, "txts", ()) or ())
     scores = list(getattr(result, "scores", ()) or ())
     boxes = getattr(result, "boxes", None)
+    active_logger.debug(
+        "RapidOCR raw result contains %d texts, %d scores and boxes=%s.",
+        len(txts),
+        len(scores),
+        boxes is not None,
+    )
 
     for index, text in enumerate(txts):
         if not text:
+            active_logger.debug("Skipping empty OCR text at index %d.", index)
             continue
         confidence = float(scores[index]) if index < len(scores) else 0.0
         box = boxes[index].tolist() if boxes is not None and index < len(boxes) else None
+        active_logger.debug(
+            "OCR observation %d: text=%r confidence=%.4f box=%s",
+            index,
+            str(text),
+            confidence,
+            box,
+        )
         observations.append(
             {
                 "text": str(text),
@@ -68,4 +95,5 @@ def run_ocr(image):
             }
         )
 
+    active_logger.info("OCR produced %d text observations.", len(observations))
     return observations

@@ -7,11 +7,25 @@ __pycache__/
 # Ignore Data Folder
 data/*
 
+
+models/*.pt
+
+#Ignore images
+src/OCR/images/
 !data/test_images
 !data/calibration_images
 !data/card_images.zip
 !data/card_to_label.json
 
-.DS_Store
-.cache
 src/OCR/debug_steps
+.cache
+.DS_Store
+*.log
+
+# Ignore Model Weights
+src/classification/models/checkpoints/
+src/representation_learning/models/checkpoints/
+
+*.pth
+**/checkpoints/
+

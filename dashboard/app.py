@@ -35,6 +35,11 @@ pages = {
             icon="🃏",
         ),
         st.Page(
+            "pages/image_upload.py",
+            title="Bild-Upload",
+            icon="🖼️",
+        ),
+        st.Page(
             "pages/camera_live.py",
             title="Kamera Live",
             icon="📷",
