@@ -3,19 +3,18 @@ import json
 import os
 import torch
 import torch.nn.functional as F
-import torchvision.transforms as transforms
 from PIL import Image
 
-from classification.dataset.dataloader import SquarePadding
-from classification.models.backbone import (
+from classification.backbone import (
     get_normalization_params,
     get_resnet50_model,
 )
+from dataloader import build_resnet_transform
 
 # --- Classification Pipeline Setup ---
 MODEL = get_resnet50_model(num_classes=960)
 WD = os.getcwd()
-WEIGHTS_PATH = os.path.join(WD, "src", "classification", "models", "checkpoints", "riftbound_resnet50_weights.pth")
+WEIGHTS_PATH = os.path.join(WD, "src", "classification", "checkpoints", "riftbound_resnet50_weights.pth")
 
 if not os.path.exists(WEIGHTS_PATH):
   raise FileNotFoundError(f"Model weights not found at {WEIGHTS_PATH}")
@@ -25,12 +24,7 @@ MODEL.load_state_dict(
 MODEL.eval()
 
 MEAN, STD = get_normalization_params("ResNet50")
-TRANSFORMS = transforms.Compose([
-    SquarePadding(),
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=MEAN, std=STD),
-])
+TRANSFORMS = build_resnet_transform(MEAN, STD)
 
 # --- Label Mapping Setup ---
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))

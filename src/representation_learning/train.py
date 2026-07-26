@@ -12,8 +12,8 @@ from pytorch_metric_learning.utils.accuracy_calculator import AccuracyCalculator
 import faiss
 import torch.nn.functional as F
 # Own Modules
-from src.representation_learning.models.backbone import ResNet, get_normalization_params
-from src.representation_learning.dataset.dataloader import RiftboundDataset, create_card_dict, augmentation, ContrastiveTransforms, SquarePadding
+from representation_learning.backbone import ResNet, get_normalization_params
+from src.dataloader import RiftboundDataset, ContrastiveTransforms, SquarePadding, create_card_dict, build_training_augmentation, build_resnet_transform
 
 # Function to extract embeddings from dataloader
 def extract_embeddings(model, dataloader, device):
@@ -71,9 +71,9 @@ class EarlyStopping:
         torch.save(model.state_dict(), self.save_path)
         print(f"Validation Score improved. Model saved to {self.save_path}")
 
-create_card_dict()
-
 json_path = "data/card_to_label.json"
+create_card_dict(image_dir="data/card_images", output_path=json_path)
+
 with open(json_path, 'r', encoding='utf-8') as f:
     card_dict = json.load(f)
 
@@ -81,19 +81,12 @@ model = "ResNet50" # <- Current Model pick
 num_epochs = 200 # <- Current Number of Epochs pick
 # Get Parameters for Normalization (Augmentation Pipeline)
 mean, std = get_normalization_params(model)
-# Transformation for Validation Gallery
-inference_transforms = transforms.Compose([
-    SquarePadding(),
-    transforms.Resize((224,224)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=mean, std=std)
-])
 
 # Create Dataset and Dataloader
 # Datasets
-train_dataset = RiftboundDataset(image_dir='data/card_images', card_dict=card_dict, split='train', transforms=ContrastiveTransforms(augmentation(mean=mean, std=std)))
-val_gallery_dataset = RiftboundDataset(image_dir='data/card_images', card_dict=card_dict, split='val', transforms=inference_transforms)
-val_query_dataset = RiftboundDataset(image_dir='data/card_images', card_dict=card_dict, split='val', transforms=augmentation(mean=mean, std=std))
+train_dataset = RiftboundDataset(image_dir='data/card_images', card_dict=card_dict, split='train', transforms=ContrastiveTransforms(build_training_augmentation(mean, std)))
+val_gallery_dataset = RiftboundDataset(image_dir='data/card_images', card_dict=card_dict, split='val', transforms=build_resnet_transform(mean, std))
+val_query_dataset = RiftboundDataset(image_dir='data/card_images', card_dict=card_dict, split='val', transforms=build_training_augmentation(mean, std))
 # Loaders
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 val_gallery_loader = DataLoader(val_gallery_dataset, batch_size=32, shuffle=False)
