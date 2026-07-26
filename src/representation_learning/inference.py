@@ -3,14 +3,13 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchvision.transforms as transforms
 from PIL import Image
 
-from representation_learning.dataset.dataloader import SquarePadding
-from representation_learning.models.backbone import (
+from representation_learning.backbone import (
     ResNet,
     get_normalization_params,
 )
+from dataloader import build_resnet_transform
 
 
 def build_gallery(model, image_dir, transform):
@@ -54,12 +53,7 @@ RL_MODEL.load_state_dict(
 RL_MODEL.eval()
 
 RL_MEAN, RL_STD = get_normalization_params("ResNet50")
-RL_TRANSFORMS = transforms.Compose([
-    SquarePadding(),
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=RL_MEAN, std=RL_STD),
-])
+RL_TRANSFORMS = build_resnet_transform(RL_MEAN, RL_STD)
 
 CACHE_PATH = BASE_DIR / "data" / "gallery_cache.pt"
 GALLERY_DIR = BASE_DIR / "data" / "card_images"

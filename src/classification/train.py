@@ -7,8 +7,8 @@ import torch.optim as optim
 import torch.nn as nn
 from torch.optim.lr_scheduler import CosineAnnealingLR
 # Own Modules
-from src.classification.models.backbone import get_resnet50_model, get_normalization_params
-from src.classification.dataset.dataloader import RiftboundDataset, create_card_dict, augmentation, padding
+from classification.backbone import get_resnet50_model, get_normalization_params
+from src.dataloader import RiftboundDataset, create_card_dict, build_training_augmentation
 
 create_card_dict()
 
@@ -21,7 +21,7 @@ num_epochs = 200 # <- Current amount of Epochs
 # Get Parameters for Normalization (Augmentation Pipeline)
 mean, std = get_normalization_params(model)
 # Create Dataset and Dataloader
-train_dataset = RiftboundDataset(image_dir='data/card_images', card_dict=card_dict, transforms=augmentation(mean, std))
+train_dataset = RiftboundDataset(image_dir='data/card_images', card_dict=card_dict, transforms=build_training_augmentation(mean, std))
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 # Get Model and move to Device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

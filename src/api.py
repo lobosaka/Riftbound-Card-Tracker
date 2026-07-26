@@ -4,7 +4,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import io
 from PIL import Image
-from classification.inference.inference import predict_classification
+from classification.inference import predict_classification
 from services.logger import setup_logging
 
 from OCR.main import process_uploaded_image
@@ -62,7 +62,7 @@ async def predict_class(file: UploadFile = File(...)):
 
 @app.post("/predict/representation-learning")
 async def predict_rl(file: UploadFile = File(...)):
-  from representation_learning.inference.inference import (
+  from representation_learning.inference import (
       predict_representation_learning,
   )
 
