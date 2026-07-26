@@ -19,7 +19,7 @@ if str(SRC_ROOT) not in sys.path:
 
 from classification.inference import predict_classification
 from representation_learning.inference import predict_representation_learning
-from OCR.card_codes import CardRepository
+from OCR.backend.card_codes import CardRepository
 from OCR.main import process_uploaded_image
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}

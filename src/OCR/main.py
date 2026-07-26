@@ -1,8 +1,8 @@
 import logging
 
 import numpy as np
-from .card_codes import CardCodeParser, CardRepository
-from OCR.ocr_backend import run_ocr
+from .backend.card_codes import CardCodeParser, CardRepository
+from OCR.backend.ocr_backend import run_ocr
 
 # Entry point from api
 def process_uploaded_image(image, filename=None, logger=None):
