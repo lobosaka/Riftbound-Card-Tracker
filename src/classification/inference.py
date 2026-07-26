@@ -14,7 +14,7 @@ from dataloader import build_resnet_transform
 # --- Classification Pipeline Setup ---
 MODEL = get_resnet50_model(num_classes=960)
 WD = os.getcwd()
-WEIGHTS_PATH = os.path.join(WD, "src", "classification", "models", "checkpoints", "riftbound_resnet50_weights.pth")
+WEIGHTS_PATH = os.path.join(WD, "src", "classification", "checkpoints", "riftbound_resnet50_weights.pth")
 
 if not os.path.exists(WEIGHTS_PATH):
   raise FileNotFoundError(f"Model weights not found at {WEIGHTS_PATH}")

@@ -15,6 +15,7 @@ from services.card_data import load_cards_for_code_index
 
 @dataclass(frozen=True)
 class CardRecord:
+    id: str
     name: str
     public_code: str
 
@@ -51,6 +52,7 @@ class CardRepository:
                 continue
 
             record = CardRecord(
+                id=row["id"],
                 name=row["name"],
                 public_code=public_code,
             )

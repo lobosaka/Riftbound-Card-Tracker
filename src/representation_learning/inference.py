@@ -35,12 +35,11 @@ def build_gallery(model, image_dir, transform):
 
 
 RL_MODEL = ResNet()
-BASE_DIR = Path(__file__).resolve().parents[3]
+BASE_DIR = Path(__file__).resolve().parents[2]
 RL_WEIGHTS_PATH = (
     BASE_DIR
     / "src"
     / "representation_learning"
-    / "models"
     / "checkpoints"
     / "riftbound_resnet50_weights_RL.pth"
 )
