@@ -161,7 +161,6 @@ class CardCodeParser:
     def main(self, lines):
         """Liefert extrahierte Kandidaten und den bestbewerteten Treffer."""
         # Extrahiert Kandidaten und nimmt dann den bestbewerteten Treffer.
-        self.logger.info("Parsing %d OCR lines for card code candidates.", len(lines))
         candidates = self.extract_candidates(lines)
         best_candidate = max(candidates, key=self.score_candidate, default="")
         if best_candidate:
@@ -187,7 +186,6 @@ class CardCodeParser:
             for line in lines
             if line
         ]
-        self.logger.debug("Normalized OCR lines: %s", normalized_lines)
         searchable_texts = list(normalized_lines)
         if normalized_lines:
             # Der Join deckt Fälle ab, in denen OCR einen Code auf mehrere Zeilen verteilt.
@@ -196,7 +194,6 @@ class CardCodeParser:
 
         candidates = []
         for normalized_text in searchable_texts:
-            self.logger.debug("Scanning OCR text for candidates: %s", normalized_text)
             # Vollcodes mit bekanntem Set-Code wie UNL-001/219.
             for match in self.full_code_pattern.finditer(normalized_text):
                 set_code = match.group("set")

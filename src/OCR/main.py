@@ -26,7 +26,6 @@ def process_uploaded_image(image, filename=None, logger=None):
     # Run OCR on the provided image and orchestrate candidate extraction and ranking
     observations = run_ocr(photo_rgb, logger=active_logger)
     lines = [str(item.get("text", "")) for item in observations if item.get("text")]
-    active_logger.debug("OCR text lines for '%s': %s", filename or "<unknown>", lines)
     # Run the parser to extract candidates and score them
     result = parser.main(lines)
     candidates = result["candidates"]
