@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DATABASE_PATH = PROJECT_ROOT / "riftbound_test_inventory.db"
+DATABASE_PATH = PROJECT_ROOT / "riftbound.db"
 
 
 def check_database_exists() -> None:

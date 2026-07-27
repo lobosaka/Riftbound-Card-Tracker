@@ -33,11 +33,6 @@ def _ensure_rgb_array(image):
     image_array = np.array(image)
     if image_array.ndim == 2:
         image_array = np.stack([image_array] * 3, axis=-1)
-    logging.getLogger(__name__).debug(
-        "Normalized OCR input image to array with shape %s and dtype %s.",
-        getattr(image_array, "shape", None),
-        getattr(image_array, "dtype", None),
-    )
     return image_array
 
 
@@ -57,22 +52,12 @@ def run_ocr(image, logger=None):
         return []
 
     image_array = _ensure_rgb_array(image)
-    active_logger.info(
-        "Running OCR on image array with shape %s.",
-        getattr(image_array, "shape", None),
-    )
     result = engine(image_array)
 
     observations = []
     txts = list(getattr(result, "txts", ()) or ())
     scores = list(getattr(result, "scores", ()) or ())
     boxes = getattr(result, "boxes", None)
-    active_logger.debug(
-        "RapidOCR raw result contains %d texts, %d scores and boxes=%s.",
-        len(txts),
-        len(scores),
-        boxes is not None,
-    )
 
     for index, text in enumerate(txts):
         if not text:
