@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Browser Camera</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: sans-serif;
+      }
+
+      body {
+        margin: 0;
+        background: transparent;
+      }
+
+      .camera-shell {
+        border: 1px solid #d1d5db;
+        border-radius: 14px;
+        padding: 1rem;
+        background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+      }
+
+      .status {
+        font-size: 0.95rem;
+        color: #334155;
+        margin-bottom: 0.75rem;
+      }
+
+      .chooser-label {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+      }
+
+      .controls {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.75rem;
+      }
+
+      select,
+      button {
+        font: inherit;
+        padding: 0.55rem 0.8rem;
+        border-radius: 10px;
+        border: 1px solid #cbd5e1;
+        background: white;
+      }
+
+      button.primary {
+        background: #0f172a;
+        color: white;
+        border-color: #0f172a;
+      }
+
+      .preview {
+        width: 100%;
+        max-height: 70vh;
+        background: #111827;
+        border-radius: 12px;
+        object-fit: contain;
+      }
+
+      .hint {
+        margin-top: 0.75rem;
+        font-size: 0.9rem;
+        color: #475569;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="camera-shell">
+      <div class="status" id="camera-status">Initialisiere Kameraauswahl...</div>
+      <div class="chooser-label">Kamera auswählen</div>
+      <div class="controls">
+        <select id="camera-select"></select>
+        <button id="refresh-cameras" type="button">Neu laden</button>
+        <button id="capture-photo" type="button" class="primary" disabled>
+          Foto aufnehmen
+        </button>
+      </div>
+      <video id="camera-preview" class="preview" autoplay playsinline muted></video>
+      <canvas id="capture-canvas" hidden></canvas>
+      <div class="hint" id="camera-hint">
+        Wähle erst oben explizit eine Kamera. Erst dann startet die Vorschau.
+      </div>
+    </div>
+
+    <script>
+      const statusEl = document.getElementById("camera-status");
+      const selectEl = document.getElementById("camera-select");
+      const videoEl = document.getElementById("camera-preview");
+      const refreshButton = document.getElementById("refresh-cameras");
+      const captureButton = document.getElementById("capture-photo");
+      const canvasEl = document.getElementById("capture-canvas");
+      const hintEl = document.getElementById("camera-hint");
+
+      let activeStream = null;
+      let streamRequestId = 0;
+      let devicesLoaded = false;
+      let storageKey = "browser_camera_selected_device_id";
+
+      function sendMessage(type, payload) {
+        window.parent.postMessage(
+          { isStreamlitMessage: true, type, ...payload },
+          "*"
+        );
+      }
+
+      function setComponentReady() {
+        sendMessage("streamlit:componentReady", { apiVersion: 1 });
+      }
+
+      function setFrameHeight(height) {
+        sendMessage("streamlit:setFrameHeight", { height });
+      }
+
+      function setComponentValue(value) {
+        sendMessage("streamlit:setComponentValue", { value });
+      }
+
+      function syncFrameHeight() {
+        window.requestAnimationFrame(() => {
+          setFrameHeight(document.documentElement.scrollHeight);
+        });
+      }
+
+      function setStatus(message) {
+        statusEl.textContent = message;
+        syncFrameHeight();
+      }
+
+      function stopStream() {
+        streamRequestId += 1;
+        captureButton.disabled = true;
+
+        if (!activeStream) {
+          videoEl.srcObject = null;
+          return;
+        }
+
+        for (const track of activeStream.getTracks()) {
+          track.stop();
+        }
+
+        activeStream = null;
+        videoEl.srcObject = null;
+      }
+
+      async function startStream(deviceId) {
+        stopStream();
+        const requestId = streamRequestId;
+
+        try {
+          const constraints = {
+            video: deviceId
+              ? {
+                  deviceId: { exact: deviceId },
+                  width: { ideal: 1280 },
+                  height: { ideal: 720 }
+                }
+              : {
+                  width: { ideal: 1280 },
+                  height: { ideal: 720 }
+                },
+            audio: false
+          };
+
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+          if (requestId !== streamRequestId) {
+            for (const track of stream.getTracks()) {
+              track.stop();
+            }
+            return;
+          }
+
+          activeStream = stream;
+          videoEl.srcObject = activeStream;
+
+          const track = activeStream.getVideoTracks()[0];
+          const label = track ? track.label : "Unbekannte Kamera";
+          captureButton.disabled = false;
+          setStatus(`Aktive Kamera: ${label}`);
+        } catch (error) {
+          setStatus(`Kamera konnte nicht gestartet werden: ${error.message}`);
+        }
+      }
+
+      function loadStoredDeviceId() {
+        try {
+          return window.localStorage.getItem(storageKey);
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function storeSelectedDeviceId(deviceId) {
+        try {
+          window.localStorage.setItem(storageKey, deviceId);
+        } catch (error) {
+          return;
+        }
+      }
+
+      function findStoredDeviceOption() {
+        const storedDeviceId = loadStoredDeviceId();
+        if (!storedDeviceId) {
+          return null;
+        }
+
+        return Array.from(selectEl.options).find(
+          (option) => option.value === storedDeviceId
+        );
+      }
+
+      async function loadDevices() {
+        setStatus("Frage Kamerazugriff an...");
+        stopStream();
+
+        try {
+          const tempStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+          });
+
+          for (const track of tempStream.getTracks()) {
+            track.stop();
+          }
+
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videoDevices = devices.filter((device) => device.kind === "videoinput");
+
+          selectEl.innerHTML = "";
+
+          if (videoDevices.length === 0) {
+            setStatus("Keine Videogeraete gefunden.");
+            return;
+          }
+
+          const placeholder = document.createElement("option");
+          placeholder.value = "";
+          placeholder.textContent = "Kamera auswählen…";
+          placeholder.disabled = true;
+          placeholder.selected = true;
+          selectEl.appendChild(placeholder);
+
+          for (const [index, device] of videoDevices.entries()) {
+            const option = document.createElement("option");
+            option.value = device.deviceId;
+            option.textContent = device.label || `Kamera ${index + 1}`;
+            selectEl.appendChild(option);
+          }
+
+          const storedOption = findStoredDeviceOption();
+          if (storedOption) {
+            selectEl.value = storedOption.value;
+            hintEl.textContent = `Zuletzt gewählt: ${storedOption.textContent}`;
+            await startStream(storedOption.value);
+          } else {
+            selectEl.value = "";
+            hintEl.textContent =
+              "Wähle oben explizit Mac, iPhone oder die externe Kamera aus.";
+            setStatus("Kameras geladen. Bitte eine Kamera auswählen.");
+          }
+        } catch (error) {
+          setStatus(`Kamerazugriff fehlgeschlagen: ${error.message}`);
+        }
+      }
+
+      function captureCurrentFrame() {
+        if (!activeStream || videoEl.videoWidth === 0 || videoEl.videoHeight === 0) {
+          setStatus("Die Kamera ist noch nicht bereit.");
+          return;
+        }
+
+        canvasEl.width = videoEl.videoWidth;
+        canvasEl.height = videoEl.videoHeight;
+
+        const context = canvasEl.getContext("2d");
+        context.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
+
+        const imageDataUrl = canvasEl.toDataURL("image/jpeg", 0.92);
+        const selectedOption = selectEl.options[selectEl.selectedIndex];
+
+        setComponentValue({
+          imageDataUrl,
+          mimeType: "image/jpeg",
+          deviceId: selectEl.value,
+          deviceLabel: selectedOption ? selectedOption.textContent : "",
+          capturedAt: Date.now()
+        });
+
+        setStatus("Foto aufgenommen. Das Bild wurde an Streamlit uebergeben.");
+      }
+
+      window.addEventListener("message", async (event) => {
+        if (event.data.type !== "streamlit:render") {
+          return;
+        }
+
+        const args = event.data.args || {};
+        storageKey =
+          `browser_camera_selected_device_id:${args.storage_key || "default"}`;
+
+        syncFrameHeight();
+
+        if (!devicesLoaded) {
+          devicesLoaded = true;
+          await loadDevices();
+        }
+      });
+
+      window.addEventListener("load", () => {
+        setComponentReady();
+        syncFrameHeight();
+      });
+
+      window.addEventListener("pagehide", () => {
+        stopStream();
+      });
+
+      selectEl.addEventListener("change", async () => {
+        storeSelectedDeviceId(selectEl.value);
+        const selectedOption = selectEl.options[selectEl.selectedIndex];
+        hintEl.textContent = selectedOption
+          ? `Ausgewählt: ${selectedOption.textContent}`
+          : "Kamera ausgewählt.";
+        await startStream(selectEl.value);
+      });
+
+      refreshButton.addEventListener("click", async () => {
+        await loadDevices();
+      });
+
+      captureButton.addEventListener("click", () => {
+        captureCurrentFrame();
+      });
+    </script>
+  </body>
+</html>

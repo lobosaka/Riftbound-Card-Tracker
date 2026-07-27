@@ -15,6 +15,7 @@ from services.card_data import (
     load_collection_statistics as load_collection_statistics_from_db,
     load_missing_cards as load_missing_cards_from_db,
     update_inventory as update_inventory_in_db,
+    load_card_by_identifier as load_card_by_identifier_from_db,
 )
 
 
@@ -53,20 +54,82 @@ def parse_upload_image(contents: bytes) -> Image.Image:
 
 @app.post("/predict/classification")
 async def predict_class(file: UploadFile = File(...)):
-  contents = await file.read()
-  image = parse_upload_image(contents)
-  return predict_classification(image)
+    logger.info("Received classification request for file '%s'.", file.filename)
+    contents = await file.read()
+    logger.debug(
+        "Read %d bytes from uploaded file '%s'.",
+        len(contents),
+        file.filename,
+    )
+    image = parse_upload_image(contents)
+
+    try:
+        result = predict_classification(image)
+        logger.info(
+            "Classification request for file '%s' completed with card '%s' "
+            "and confidence %s.",
+            file.filename,
+            result.get("card_name") or "",
+            result.get("confidence"),
+        )
+        return result
+    except Exception as error:
+        logger.exception(
+            "Classification failed for uploaded image: %s",
+            file.filename,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "Classification processing failed.",
+                "image_path": file.filename,
+                "error": str(error),
+            },
+        ) from error
 
 
 @app.post("/predict/representation-learning")
 async def predict_rl(file: UploadFile = File(...)):
-  from representation_learning.inference import (
-      predict_representation_learning,
-  )
+    from representation_learning.inference import (
+        predict_representation_learning,
+    )
 
-  contents = await file.read()
-  image = parse_upload_image(contents)
-  return predict_representation_learning(image)
+    logger.info(
+        "Received representation learning request for file '%s'.",
+        file.filename,
+    )
+    contents = await file.read()
+    logger.debug(
+        "Read %d bytes from uploaded file '%s'.",
+        len(contents),
+        file.filename,
+    )
+    image = parse_upload_image(contents)
+
+    try:
+        result = predict_representation_learning(image)
+        logger.info(
+            "Representation learning request for file '%s' completed with "
+            "card '%s' and confidence %s.",
+            file.filename,
+            result.get("card_name") or "",
+            result.get("confidence"),
+        )
+        return result
+    except Exception as error:
+        logger.exception(
+            "Representation learning failed for uploaded image: %s",
+            file.filename,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "Representation learning processing failed.",
+                "image_path": file.filename,
+                "error": str(error),
+            },
+        ) from error
+
 
 @app.post("/predict/ocr")
 async def run_ocr(
@@ -158,6 +221,14 @@ def update_inventory(card_id: str, payload: InventoryUpdate):
         "inventory_count": inventory_count,
     }
 
+@app.get("/cards/{card_id:path}")
+def load_card_by_id(card_id: str):
+    card = load_card_by_identifier_from_db(card_id)
+
+    if card is None:
+        raise not_found(CARD_NOT_FOUND_DETAIL.format(card_id=card_id))
+
+    return card
 
 if __name__ == "__main__":
     import uvicorn
