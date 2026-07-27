@@ -7,8 +7,7 @@ from PIL import Image
 from classification.inference import predict_classification
 from services.logger import setup_logging
 
-from OCR.main import process_uploaded_image
-from services.camera_capture import CameraCaptureError, CameraCaptureService
+from ocr.run_ocr_pipeline import process_uploaded_image
 from services.card_data import (
     change_inventory as change_inventory_in_db,
     load_all_cards as load_all_cards_from_db,
@@ -22,7 +21,6 @@ from services.card_data import (
 logger = logging.getLogger(__name__)
 setup_logging(level=logging.DEBUG)
 app = FastAPI(title="Card Recognition API")
-camera_capture_service = CameraCaptureService()
 CARD_NOT_FOUND_DETAIL = "Es wurde keine Karte mit der ID {card_id!r} gefunden."
 
 
@@ -108,41 +106,6 @@ async def run_ocr(
         ) from error
 
 
-@app.get("/stream")
-def stream_camera(
-    camera_device_index: int = 0,
-    camera_device_candidates: str | None = None,
-    camera_width: int | None = None,
-    camera_height: int | None = None,
-    camera_warmup_frames: int = 10,
-    fps: float = 10.0,
-    jpeg_quality: int = 85,
-):
-    try:
-        device_indices = None
-        if camera_device_candidates:
-            device_indices = [
-                int(candidate.strip())
-                for candidate in camera_device_candidates.split(",")
-                if candidate.strip()
-            ]
-
-        stream = camera_capture_service.mjpeg_stream(
-            device_index=camera_device_index,
-            device_indices=device_indices,
-            width=camera_width,
-            height=camera_height,
-            warmup_frames=camera_warmup_frames,
-            fps=fps,
-            jpeg_quality=jpeg_quality,
-        )
-    except (CameraCaptureError, ValueError) as error:
-        raise bad_request(str(error)) from error
-
-    return StreamingResponse(
-        stream,
-        media_type="multipart/x-mixed-replace; boundary=frame",
-    )
 
 
 @app.get("/cards")
