@@ -73,10 +73,9 @@ Camera stream:
 curl "http://127.0.0.1:8000/stream"
 ```
 
-## Optional Data Prep
+## Optional Data Scraping
 
 ```bash
 python -m src.db.scraper
 python -m src.db.picture_loader
-python -m src.trans.transform
 ```

@@ -17,8 +17,8 @@ SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
 	sys.path.insert(0, str(SRC_ROOT))
 
-from src.classification.inference.inference import predict_classification
-from src.representation_learning.inference.inference import predict_representation_learning
+from classification.inference import predict_classification
+from representation_learning.inference import predict_representation_learning
 from OCR.backend.card_codes import CardRepository
 from OCR.main import process_uploaded_image
 
