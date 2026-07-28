@@ -1,10 +1,9 @@
-import io
 import json
-import os
+from pathlib import Path
 import torch
 import torch.nn.functional as F
 from PIL import Image
-
+import os
 from classification.backbone import (
     get_normalization_params,
     get_resnet50_model,
@@ -13,10 +12,16 @@ from dataloader import build_resnet_transform
 
 # --- Classification Pipeline Setup ---
 MODEL = get_resnet50_model(num_classes=960)
-WD = os.getcwd()
-WEIGHTS_PATH = os.path.join(WD, "src", "classification", "checkpoints", "riftbound_resnet50_weights.pth")
+BASE_DIR = Path(__file__).resolve().parents[2]
+WEIGHTS_PATH = (
+    BASE_DIR
+    / "src"
+    / "classification"
+    / "checkpoints"
+    / "riftbound_resnet50_weights.pth"
+)
 
-if not os.path.exists(WEIGHTS_PATH):
+if not WEIGHTS_PATH.exists():
   raise FileNotFoundError(f"Model weights not found at {WEIGHTS_PATH}")
 MODEL.load_state_dict(
     torch.load(WEIGHTS_PATH, map_location=torch.device("cpu"), weights_only=True)
@@ -27,12 +32,11 @@ MEAN, STD = get_normalization_params("ResNet50")
 TRANSFORMS = build_resnet_transform(MEAN, STD)
 
 # --- Label Mapping Setup ---
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 CARD_DICT_REV = {}
-JSON_PATH = os.path.join(PROJECT_ROOT, "data", "card_to_label.json")
+JSON_PATH = BASE_DIR / "data" / "card_to_label.json"
 
-if os.path.exists(JSON_PATH):
-  with open(JSON_PATH, "r", encoding="utf-8") as f:
+if JSON_PATH.exists():
+  with JSON_PATH.open("r", encoding="utf-8") as f:
     card_dict = json.load(f)
   CARD_DICT_REV = {int(v): k for k, v in card_dict.items()}
 

@@ -191,3 +191,44 @@ def change_inventory(card_id: str, difference: int) -> int | None:
         return None
 
     return row["inventory_count"]
+
+
+def load_card_by_identifier(identifier: str) -> dict | None:
+    exact_match_query = """
+        SELECT *
+        FROM cards
+        WHERE id = ?
+           OR publicCode = ?
+    """
+
+    card = fetch_row(
+        exact_match_query,
+        (
+            identifier,
+            identifier,
+        ),
+    )
+
+    if card is not None:
+        return card
+
+    normalized_identifier = identifier.strip().upper()
+
+    if "/" in normalized_identifier:
+        public_code_suffix_query = """
+            SELECT *
+            FROM cards
+            WHERE UPPER(publicCode) = ?
+               OR UPPER(publicCode) LIKE ?
+        """
+        card = fetch_row(
+            public_code_suffix_query,
+            (
+                normalized_identifier,
+                f"%-{normalized_identifier}",
+            ),
+        )
+        if card is not None:
+            return card
+
+    return None

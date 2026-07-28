@@ -65,13 +65,6 @@ def run_ocr(image, logger=None):
             continue
         confidence = float(scores[index]) if index < len(scores) else 0.0
         box = boxes[index].tolist() if boxes is not None and index < len(boxes) else None
-        active_logger.debug(
-            "OCR observation %d: text=%r confidence=%.4f box=%s",
-            index,
-            str(text),
-            confidence,
-            box,
-        )
         observations.append(
             {
                 "text": str(text),
