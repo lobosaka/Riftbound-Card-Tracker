@@ -233,28 +233,40 @@ st.caption(
     " statt ueber OpenCV-Geraeteindizes zu raten."
 )
 
-st.info(
-    "Beim ersten Zugriff fragt der Browser nach Kamerarechten. Waehle dort die externe USB-Kamera."
-)
-
-camera_capture = browser_camera(
-    key="card_camera",
-    height=760,
-)
-
-st.caption(
-    "Auswahl, Live-Vorschau und Fotoaufnahme verwenden denselben Kamera-Stream."
-)
-
 initialize_session_state()
 
-selected_model = st.selectbox(
-    "Modellauswahl",
-    options=list(MODEL_OPTIONS.keys()),
-    index=0,
-    key="model_selection",
-    help="Waehle das Modell aus, das für die Vorhersage verwendet werden soll.",
+camera_column, settings_column = st.columns(
+    [3, 2],
+    gap="large",
+    vertical_alignment="top",
 )
+
+with camera_column:
+    camera_capture = browser_camera(
+        key="card_camera",
+        height=520,
+    )
+    st.caption(
+        "Auswahl, Live-Vorschau und Fotoaufnahme verwenden denselben Kamera-Stream."
+    )
+
+with settings_column:
+    st.info(
+        "Beim ersten Zugriff fragt der Browser nach Kamerarechten. "
+        "Waehle dort die externe USB-Kamera."
+    )
+
+    selected_model = st.selectbox(
+        "Modellauswahl",
+        options=list(MODEL_OPTIONS.keys()),
+        index=0,
+        key="model_selection",
+        help="Waehle das Modell aus, das für die Vorhersage verwendet werden soll.",
+    )
+
+    st.caption(
+        "Nimm links ein Foto auf. Anschliessend erscheint darunter die Vorschau."
+    )
 
 captured_photo = None
 captured_mime_type = "image/jpeg"
@@ -277,55 +289,59 @@ current_detection_signature = build_detection_signature(
 )
 sync_detection_state(current_detection_signature)
 
-if camera_capture is not None and captured_photo is not None:
-    st.image(
-        captured_photo,
-        caption=(
-            "Aufgenommenes Bild"
-            f" – {camera_capture.get('deviceLabel', 'ausgewählte Kamera')}"
-        ),
-        use_container_width=True,
-    )
+start_detection = False
 
-    if st.button(
-        "Erkennung starten",
-        type="primary",
-        use_container_width=True,
-    ):
-        st.session_state.active_detection_signature = current_detection_signature
-        with st.spinner("Bild wird analysiert..."):
-            try:
-                prediction_result = predict_card(
-                    captured_photo,
-                    captured_mime_type,
-                    selected_model,
-                )
-                st.session_state.prediction_result = prediction_result
+with settings_column:
+    if camera_capture is not None and captured_photo is not None:
+        st.image(
+            captured_photo,
+            caption=(
+                "Aufgenommenes Bild"
+                f" – {camera_capture.get('deviceLabel', 'ausgewählte Kamera')}"
+            ),
+            use_container_width=True,
+        )
+        start_detection = st.button(
+            "Erkennung starten",
+            type="primary",
+            use_container_width=True,
+        )
+    else:
+        st.info("Nimm ein Foto auf, um die Erkennung zu starten.")
 
-                detected_identifier = extract_identifier_from_prediction(
-                    prediction_result
-                )
+if start_detection:
+    st.session_state.active_detection_signature = current_detection_signature
+    with st.spinner("Bild wird analysiert..."):
+        try:
+            prediction_result = predict_card(
+                captured_photo,
+                captured_mime_type,
+                selected_model,
+            )
+            st.session_state.prediction_result = prediction_result
 
-                if detected_identifier is None:
-                    st.session_state.manual_search_mode = True
-                    st.rerun()
+            detected_identifier = extract_identifier_from_prediction(
+                prediction_result
+            )
 
-                card = fetch_card_by_identifier(detected_identifier)
-
-            except RuntimeError as error:
-                st.error(str(error))
-            except requests.RequestException as error:
-                st.error(
-                    "Die API ist nicht erreichbar. Pruefe, ob das Backend auf "
-                    f"{API_BASE_URL} laeuft."
-                )
-                st.caption(str(error))
-            else:
-                st.session_state.detected_card = card
-                st.session_state.manual_search_mode = False
+            if detected_identifier is None:
+                st.session_state.manual_search_mode = True
                 st.rerun()
-else:
-    st.info("Nimm ein Foto auf, um die Erkennung zu starten.")
+
+            card = fetch_card_by_identifier(detected_identifier)
+
+        except RuntimeError as error:
+            st.error(str(error))
+        except requests.RequestException as error:
+            st.error(
+                "Die API ist nicht erreichbar. Pruefe, ob das Backend auf "
+                f"{API_BASE_URL} laeuft."
+            )
+            st.caption(str(error))
+        else:
+            st.session_state.detected_card = card
+            st.session_state.manual_search_mode = False
+            st.rerun()
 
 if st.session_state.manual_search_mode:
     st.warning("Es konnte keine Karte automatisch erkannt werden.")
