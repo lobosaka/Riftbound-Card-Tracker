@@ -29,7 +29,7 @@ def create_card_dict(
 
 
 class SquarePadding(object):
-    def __call__(self, img):
+    def __call__(self, img: Image.Image):
         img_rgb = img.convert("RGB")
         width, height = img_rgb.size
         max_side = max(width, height)
@@ -39,9 +39,22 @@ class SquarePadding(object):
         new_img.paste(img_rgb, (left, top))
         return new_img
 
+class Crop(object):
+    def __init__(self, top: int, bottom: int, left: int, right: int):
+        self.top = top
+        self.bottom = bottom
+        self.left = left
+        self.right = right
+
+    def __call__(self, img: Image.Image):
+        img_rgb = img.convert("RGB")
+        cropped_img = img_rgb.crop((self.left, self.top, self.right, self.bottom))
+        
+        return cropped_img
 
 def build_resnet_transform(mean, std):
     return transforms.Compose([
+        Crop(50, 1100, 0, 720), # Crop from Camera
         SquarePadding(),
         transforms.Resize((224, 224)),
         transforms.ToTensor(),

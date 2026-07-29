@@ -5,6 +5,8 @@ from urllib.parse import quote
 
 import requests
 import streamlit as st
+import cv2
+import numpy as np
 
 from card_components import render_card
 from components.browser_camera import browser_camera
@@ -20,6 +22,14 @@ MODEL_OPTIONS = {
 
 REQUEST_TIMEOUT_SECONDS = 30
 PREDICTION_TIMEOUT_SECONDS = 180
+
+CAMERA_MATRIX = np.array(
+                [[1239.3367501467612, 0.0, 367.8840428570087], [0.0, 1242.9872838383162, 673.4001708112677], [0.0, 0.0, 1.0]]
+                , dtype=np.float32)
+
+DIST_COEFFS = np.array(
+            [[-0.23029730654775918, -0.06403435155721206, 0.00026812586219995214, 0.0002515795799608243, -0.10366338898133773]]
+            , dtype=np.float32)
 
 
 def reset_detection_state() -> None:
@@ -76,13 +86,25 @@ def decode_camera_capture(camera_capture: dict) -> tuple[bytes, str]:
 
 
 def predict_card(image_bytes: bytes, mime_type: str, model_label: str) -> dict:
+    np_arr = np.frombuffer(image_bytes, dtype=np.uint8)
+    frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    
+    frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+    frame = cv2.undistort(frame, CAMERA_MATRIX, DIST_COEFFS)
+
+    ext = '.' + mime_type.split('/')[-1] if '/' in mime_type else '.jpg'
+    success, encoded_image = cv2.imencode(ext, frame)
+    if not success:
+        raise ValueError("Failed to encode processed frame back to bytes.")
+    processed_bytes = encoded_image.tobytes()
+
     endpoint = MODEL_OPTIONS[model_label]
     response = requests.post(
         f"{API_BASE_URL}/predict/{endpoint}",
         files={
             "file": (
-                "camera_capture.jpg",
-                image_bytes,
+                f"camera_capture{ext}",
+                processed_bytes,
                 mime_type,
             ),
         },
@@ -90,7 +112,6 @@ def predict_card(image_bytes: bytes, mime_type: str, model_label: str) -> dict:
     )
     raise_api_error(response)
     return response.json()
-
 
 def extract_identifier_from_prediction(prediction_result: dict) -> str | None:
     direct_keys = [

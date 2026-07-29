@@ -12,6 +12,7 @@ data/*
 !data/calibration_images
 !data/card_images.zip
 !data/card_to_label.json
+!data/gallery_cache.pt
 
 .cache
 .DS_Store
