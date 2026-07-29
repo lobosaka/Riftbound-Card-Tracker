@@ -9,7 +9,7 @@ from representation_learning.backbone import (
     ResNet,
     get_normalization_params,
 )
-from dataloader import build_resnet_transform
+from services.dataloader import build_resnet_transform
 
 
 def build_gallery(model, image_dir, transform):

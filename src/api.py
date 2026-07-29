@@ -87,7 +87,6 @@ async def predict_class(file: UploadFile = File(...)):
             },
         ) from error
 
-
 @app.post("/predict/representation-learning")
 async def predict_rl(file: UploadFile = File(...)):
     from representation_learning.inference import (
@@ -130,7 +129,6 @@ async def predict_rl(file: UploadFile = File(...)):
             },
         ) from error
 
-
 @app.post("/predict/ocr")
 async def run_ocr(
     file: UploadFile = File(...),
@@ -168,9 +166,6 @@ async def run_ocr(
             },
         ) from error
 
-
-
-
 @app.get("/cards")
 def load_all_cards(
     inventory: str | None = None,
@@ -188,7 +183,6 @@ def load_all_cards(
     if inventory == "missing":
         return load_missing_cards_from_db()
     raise bad_request("Invalid inventory filter. Use 'collection' or 'missing'.")
-
 
 @app.put("/cards/{card_id}/inventory")
 def update_inventory(card_id: str, payload: InventoryUpdate):

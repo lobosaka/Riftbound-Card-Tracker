@@ -8,7 +8,7 @@ from classification.backbone import (
     get_normalization_params,
     get_resnet50_model,
 )
-from dataloader import build_resnet_transform
+from services.dataloader import build_resnet_transform
 
 # --- Classification Pipeline Setup ---
 MODEL = get_resnet50_model(num_classes=960)

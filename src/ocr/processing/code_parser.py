@@ -143,6 +143,10 @@ class CardCodeParser:
         self.partial_code_pattern = re.compile(
             r"(?P<number>\d{1,3})(?P<suffix>[A-Z*]?)[/\|](?P<total>\d{3})"
         )
+        # Token-Codes folgen einem eigenen Schema wie UNL-T06 und haben keine Gesamtzahl.
+        self.token_code_pattern = re.compile(
+            r"(?P<set>[A-Z]{3})[-\s•·.]*(?P<token>T[0-9OIL]{2})"
+        )
         # Übersetzungstabelle, um typische OCR-Fehler zu glätten.
         self.normalization_table = str.maketrans(
             {
@@ -180,6 +184,11 @@ class CardCodeParser:
 
     def extract_candidates(self, lines):
         """Sammelt aus mehreren OCR-Zeilen alle plausiblen Karten-Code-Kandidaten."""
+        token_searchable_texts = [
+            line.upper().strip().replace(" ", "").replace("\n", "")
+            for line in lines
+            if line
+        ]
         # Bereinigt jede OCR-Zeile vor der eigentlichen Suche.
         normalized_lines = [
             line.upper().strip().replace(" ", "").replace("\n", "").translate(
@@ -192,6 +201,7 @@ class CardCodeParser:
         if normalized_lines:
             # Der Join deckt Fälle ab, in denen OCR einen Code auf mehrere Zeilen verteilt.
             searchable_texts.append(" ".join(normalized_lines))
+            token_searchable_texts.append(" ".join(token_searchable_texts))
         self.logger.debug("Searchable OCR texts: %s", searchable_texts)
 
         candidates = []
@@ -241,6 +251,13 @@ class CardCodeParser:
                         candidate,
                     )
 
+        # Token-Karten verwenden z. B. UNL-T06 statt des normalen 001/219-Schemas.
+        # Dieser Pfad bleibt ein Fallback, damit reguläre Kartencodes immer Vorrang haben.
+        if not candidates:
+            candidates.extend(
+                self.extract_token_fallback_candidates(token_searchable_texts)
+            )
+
         # Entfernt Duplikate, aber lässt die ursprüngliche Reihenfolge stehen.
         unique_candidates = list(dict.fromkeys(candidate for candidate in candidates if candidate))
         self.logger.info(
@@ -249,6 +266,38 @@ class CardCodeParser:
             len(searchable_texts),
         )
         return unique_candidates
+
+    def extract_token_fallback_candidates(self, searchable_texts):
+        """Extrahiert und validiert Token-Codes wie UNL-T06 als OCR-Fallback."""
+        candidates = []
+        for normalized_text in searchable_texts:
+            for match in self.token_code_pattern.finditer(normalized_text):
+                set_code = match.group("set")
+                if set_code not in self.repository.known_set_codes:
+                    self.logger.debug(
+                        "Rejected token-code match %r because set code '%s' is unknown.",
+                        match.group(0),
+                        set_code,
+                    )
+                    continue
+
+                token_code = match.group("token").translate(
+                    str.maketrans({"O": "0", "I": "1", "L": "1"})
+                )
+                candidate = f"{set_code}-{token_code}"
+                if self.repository.verify_code(candidate):
+                    self.logger.debug(
+                        "Accepted token-code fallback candidate '%s'.",
+                        candidate,
+                    )
+                    candidates.append(candidate)
+                else:
+                    self.logger.debug(
+                        "Rejected token-code fallback candidate '%s' after DB verification.",
+                        candidate,
+                    )
+
+        return candidates
 
     def score_candidate(self, candidate):
         """Bewertet einen Kandidaten danach, wie gut er wie ein echter Karten-Code aussieht."""
@@ -262,7 +311,7 @@ class CardCodeParser:
             match_score = 4
         elif canonical_match:
             match_score = 3
-        elif re.fullmatch(r"[A-Z]\d{2}", candidate):
+        elif re.fullmatch(r"(?:[A-Z]{3}-)?T\d{2}", candidate):
             match_score = 2
         else:
             match_score = 0

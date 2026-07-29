@@ -13,7 +13,7 @@ import faiss
 import torch.nn.functional as F
 # Own Modules
 from representation_learning.backbone import ResNet, get_normalization_params
-from src.dataloader import RiftboundDataset, ContrastiveTransforms, SquarePadding, create_card_dict, build_training_augmentation, build_resnet_transform
+from services.dataloader import RiftboundDataset, ContrastiveTransforms, SquarePadding, create_card_dict, build_training_augmentation, build_resnet_transform
 
 # Function to extract embeddings from dataloader
 def extract_embeddings(model, dataloader, device):
