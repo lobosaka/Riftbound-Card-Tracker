@@ -20,7 +20,7 @@ from classification.inference import predict_classification
 from representation_learning.inference import predict_representation_learning
 from ocr.processing.code_parser import CardRepository
 from ocr.run_ocr_pipeline import process_uploaded_image
-from dataloader import Crop, SquarePadding
+from services.dataloader import Crop, SquarePadding
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
 
