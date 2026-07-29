@@ -1,28 +1,36 @@
 from __future__ import annotations
 
 import argparse
-import shutil
 import sys
 from pathlib import Path
 from typing import Iterable
 
 from PIL import Image
-
+from torchvision.transforms import transforms
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
-	sys.path.insert(0, str(PROJECT_ROOT))
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
-	sys.path.insert(0, str(SRC_ROOT))
+    sys.path.insert(0, str(SRC_ROOT))
 
 from classification.inference import predict_classification
 from representation_learning.inference import predict_representation_learning
-from OCR.backend.card_codes import CardRepository
-from OCR.main import process_uploaded_image
+from ocr.processing.code_parser import CardRepository
+from ocr.run_ocr_pipeline import process_uploaded_image
+from dataloader import Crop, SquarePadding
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
+
+def get_pil_transform():
+    """Returns PIL-level transformations (Crop, Pad, Resize)."""
+    return transforms.Compose([
+        Crop(50, 1100, 0, 720),
+        SquarePadding(),
+        transforms.Resize((224, 224)),
+    ])
 
 
 def parse_args() -> argparse.Namespace:
@@ -81,10 +89,7 @@ def predict_image_id(image_path: Path, method: str) -> str:
 
 	repository = CardRepository()
 	matches = repository.verify_code(code)
-	if len(matches) == 1:
-		return matches[0].id
-
-	if len(matches) > 1:
+	if len(matches) == 1 or len(matches) > 1:
 		return matches[0].id
 
 	return code
@@ -113,12 +118,16 @@ def main() -> int:
 		print(f"No images found in {input_dir}")
 		return 0
 
+	transform = get_pil_transform()
+
 	processed = 0
 	for image_path in image_paths:
 		try:
 			image_id = predict_image_id(image_path, args.method)
 			target_path = unique_output_path(output_dir, image_id, image_path.suffix.lower())
-			shutil.copy2(image_path, target_path)
+			with Image.open(image_path) as img:
+							transformed_img = transform(img)
+							transformed_img.save(target_path)
 			processed += 1
 			print(f"{image_path.name} -> {target_path.name}")
 		except Exception as exc:
