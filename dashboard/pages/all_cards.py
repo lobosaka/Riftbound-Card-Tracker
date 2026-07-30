@@ -46,15 +46,6 @@ with st.sidebar:
         options=available_types,
     )
 
-    inventory_status = st.selectbox(
-        "Sammlungsstatus",
-        options=[
-            "Alle Karten",
-            "Im Inventar",
-            "Nicht im Inventar",
-        ],
-    )
-
 
 filtered_cards = cards.copy()
 
@@ -106,17 +97,6 @@ if selected_rarities:
 if selected_types:
     filtered_cards = filtered_cards[
         filtered_cards["cardType"].isin(selected_types)
-    ]
-
-
-if inventory_status == "Im Inventar":
-    filtered_cards = filtered_cards[
-        filtered_cards["inventory_count"] > 0
-    ]
-
-elif inventory_status == "Nicht im Inventar":
-    filtered_cards = filtered_cards[
-        filtered_cards["inventory_count"] == 0
     ]
 
 
