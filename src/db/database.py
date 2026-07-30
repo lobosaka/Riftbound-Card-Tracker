@@ -28,7 +28,8 @@ def init_db():
                    illustrator TEXT,
                    ability TEXT,
                    effect TEXT,
-                   image TEXT
+                   image TEXT,
+                   inventory_count INTEGER NOT NULL DEFAULT 0
                 )
                 ''')
     
@@ -47,8 +48,8 @@ def insert_cards_into_db(card_data):
             rarityIcon, domain_1, domainIcon_1, domain_2,
             domainIcon_2, energy, might, mightBonus, 
             power, tags, illustrator, ability,
-            effect, image
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            effect, image, inventory_count
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
         '''
     
     cursor.executemany(sql, card_data)
