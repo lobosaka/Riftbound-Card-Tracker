@@ -1,81 +1,112 @@
 # Riftbound Card Tracker
 
-Local Riftbound card tracker with a `FastAPI` backend and `Streamlit` dashboard.
+Lokale Anwendung zum Erkennen und Verwalten einer Riftbound-Kartensammlung.
+Das Projekt kombiniert ein **Streamlit-Dashboard**, eine **FastAPI**,
+eine **SQLite-Datenbank** und mehrere Computer-Vision-Verfahren.
 
-## Install
+## Schnellstart mit Docker
+
+Das fertige Image ist über die GitHub Container Registry verfügbar:
 
 ```bash
-pip install -r requirements.txt
+docker pull ghcr.io/lobosaka/cv-app:latest
+
+docker compose up --build
 ```
 
-## Run
+Das Dashboard ist anschließend unter
+[http://localhost:8501](http://localhost:8501) erreichbar.
 
-Start the API:
+
+## Lokale Installation
+
+Vorausgesetzt werden Python 3.11 oder neuer sowie Git LFS.
+
+```bash
+git clone https://github.com/lobosaka/Riftbound-Card-Tracker.git
+cd Riftbound-Card-Tracker
+
+git lfs install
+git lfs pull
+
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+for unix-based systems
+
+Backend starten:
 
 ```bash
 python src/api.py
 ```
 
-Start the dashboard:
+Dashboard in einem zweiten Terminal starten:
 
 ```bash
+source venv/bin/activate
 streamlit run dashboard/app.py
 ```
 
-The app uses `http://127.0.0.1:8000` for the API.
+Danach stehen folgende Oberflächen bereit:
 
-## API
+- Dashboard: [http://localhost:8501](http://localhost:8501)
+- API-Dokumentation: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
-OCR:
+## Verwendung
+
+Im Dashboard kann der gesamte Kartenkatalog durchsucht und nach Set,
+Seltenheit, Kartentyp oder Sammlungsstatus gefiltert werden. Der Bestand einer
+Karte lässt sich direkt erhöhen, verringern oder auf eine bestimmte Menge
+setzen.
+
+Über **Bild-Upload** oder **Kamera Live** wird ein Kartenbild mit einem der drei
+Modelle analysiert. Der erkannte Treffer muss bestätigt werden, bevor die Karte
+zur Sammlung hinzugefügt wird. Ist der Treffer falsch oder nicht eindeutig,
+kann die Karten-ID beziehungsweise der Public Code manuell eingegeben werden.
+
+## Wichtigste API-Endpunkte
+
+| Methode | Pfad | Beschreibung |
+| --- | --- | --- |
+| `POST` | `/predict/ocr` | Karte per Kartencode erkennen |
+| `POST` | `/predict/classification` | Karte per Klassifikation erkennen |
+| `POST` | `/predict/representation-learning` | Karte per Ähnlichkeitssuche erkennen |
+| `GET` | `/cards` | Alle Karten laden |
+| `GET` | `/cards?inventory=collection` | Vorhandene Karten laden |
+| `GET` | `/cards?inventory=missing` | Fehlende Karten laden |
+| `GET` | `/cards?stats=true` | Sammlungsstatistiken laden |
+| `GET` | `/cards/{identifier}` | Einzelne Karte laden |
+| `PUT` | `/cards/{card_id}/inventory` | Kartenbestand ändern |
+
+Beispiel für eine OCR-Anfrage:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/predict/ocr \
-  -F "file=@/absolute/path/to/card-image.jpg"
+curl -X POST "http://127.0.0.1:8000/predict/ocr" \
+  -F "file=@/absoluter/pfad/zur/karte.jpg"
 ```
 
-Classification:
+Beispiel für eine Bestandsänderung:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/predict/classification \
-  -F "file=@/absolute/path/to/card-image.jpg"
-```
-
-Representation learning:
-
-```bash
-curl -X POST http://127.0.0.1:8000/predict/representation-learning \
-  -F "file=@/absolute/path/to/card-image.jpg"
-```
-
-All cards:
-
-```bash
-curl http://127.0.0.1:8000/cards
-```
-
-Collection stats:
-
-```bash
-curl "http://127.0.0.1:8000/cards?stats=true"
-```
-
-Update inventory:
-
-```bash
-curl -X PUT http://127.0.0.1:8000/cards/example-card-id/inventory \
+curl -X PUT "http://127.0.0.1:8000/cards/unl-130-219/inventory" \
   -H "Content-Type: application/json" \
   -d '{"difference": 1}'
 ```
-
-Camera stream:
+## Optionales Data Scraping
 
 ```bash
-curl "http://127.0.0.1:8000/stream"
+python src/db/scraper.py
+python src/db/picture_loader.py
 ```
 
-## Optional Data Scraping
-
+## Training Commands
+Klassifizierungsmodell:
 ```bash
-python -m src.db.scraper
-python -m src.db.picture_loader
+python src/classification/train.py
+```
+Representation Learning Modell:
+```bash
+python src/services/generate_splits.py
+python src/representation_learning/train.py
 ```
