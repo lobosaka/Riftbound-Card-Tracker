@@ -4,6 +4,12 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 import os
+if __name__ == "__main__":
+  import sys
+
+  src_dir = Path(__file__).resolve().parents[1]
+  if str(src_dir) not in sys.path:
+    sys.path.insert(0, str(src_dir))
 from classification.backbone import (
     get_normalization_params,
     get_resnet50_model,
@@ -63,8 +69,8 @@ def predict_classification(image: Image.Image) -> dict:
 
 
 if __name__ == "__main__":
-  query_image_name = "sumpworks_map1.jpeg"
-  query_image_path = os.path.join("data/inference_images/", query_image_name)
+  query_image_name = 'unl-130-219.jpg'
+  query_image_path = BASE_DIR / 'data' / 'test_images' / query_image_name
 
   print(f"Lade Suchbild: {query_image_name}...")
   with Image.open(query_image_path) as img:

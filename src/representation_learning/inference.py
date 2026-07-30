@@ -5,6 +5,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 from PIL import Image
 
+if __name__ == "__main__":
+  import sys
+
+  src_dir = Path(__file__).resolve().parents[1]
+  if str(src_dir) not in sys.path:
+    sys.path.insert(0, str(src_dir))
+
 from representation_learning.backbone import (
     ResNet,
     get_normalization_params,
@@ -100,8 +107,8 @@ def predict_representation_learning(image: Image.Image) -> dict:
 
 
 if __name__ == '__main__':
-  query_image_name = 'Bild_1.jpeg'
-  query_image_path = BASE_DIR / 'src' / 'dataset' / 'data' / 'inference_images' / query_image_name
+  query_image_name = 'unl-130-219.jpg'
+  query_image_path = BASE_DIR / 'data' / 'test_images' / query_image_name
 
   print(f'Lade Suchbild: {query_image_name}...')
   with Image.open(query_image_path) as query_img:
