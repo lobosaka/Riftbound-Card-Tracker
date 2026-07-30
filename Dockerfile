@@ -1,4 +1,5 @@
 FROM python:3.11-slim
+LABEL org.opencontainers.image.source="https://github.com/lobosaka/Riftbound-Card-Tracker"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
