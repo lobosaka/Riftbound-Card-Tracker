@@ -102,6 +102,7 @@ python src/db/picture_loader.py
 
 ## Training Commands
 Klassifizierungsmodell:
+Stelle im vorhinein sicher, dass die Variable "num_classes" (src/classification/train.py, l. 28) der Anzahl an distinkten Karten in data/card_images entspricht
 ```bash
 python src/classification/train.py
 ```

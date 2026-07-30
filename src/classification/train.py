@@ -25,7 +25,7 @@ train_dataset = RiftboundDataset(image_dir='data/card_images', card_dict=card_di
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 # Get Model and move to Device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = get_resnet50_model(num_classes=960)
+model = get_resnet50_model(num_classes=960) # Must match number of available card ids in data/card_images
 model = model.to(device)
 # Fine Tuning Layer 
 for param in model.layer3.parameters():
