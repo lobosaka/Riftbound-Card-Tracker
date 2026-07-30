@@ -1,5 +1,6 @@
 import plotly.express as px
 import streamlit as st
+from styles import style_plotly_chart
 
 from database import (
     load_all_cards,
@@ -70,6 +71,10 @@ def create_progress_chart(
         },
         title=title,
         barmode="stack",
+        color_discrete_map={
+            "gesammelt": "#FFC000",
+            "fehlend": "#AEAEAE",
+        }
     )
 
     chart.update_layout(
@@ -104,39 +109,41 @@ collection_percentage = (
 )
 
 
-metric_columns = st.columns(6)
+first_metric_row = st.columns(3)
 
-metric_columns[0].metric(
+first_metric_row[0].metric(
     "Karten insgesamt",
     f"{total_cards:,}".replace(",", "."),
     border=True,
 )
 
-metric_columns[1].metric(
+first_metric_row[1].metric(
     "Verschiedene gesammelt",
     f"{owned_cards:,}".replace(",", "."),
     border=True,
 )
 
-metric_columns[2].metric(
+first_metric_row[2].metric(
     "Sammlungsfortschritt",
     f"{collection_percentage:.1f} %",
     border=True,
 )
 
-metric_columns[3].metric(
+second_metric_row = st.columns(3)
+
+second_metric_row[0].metric(
     "Physische Karten",
     f"{physical_cards:,}".replace(",", "."),
     border=True,
 )
 
-metric_columns[4].metric(
+second_metric_row[1].metric(
     "Fehlende Karten",
     f"{missing_cards:,}".replace(",", "."),
     border=True,
 )
 
-metric_columns[5].metric(
+second_metric_row[2].metric(
     "Zusätzliche Exemplare",
     f"{duplicate_cards:,}".replace(",", "."),
     border=True,
@@ -172,6 +179,7 @@ with left_column:
         x_label="Set",
         title="Gesammelte und fehlende Karten je Set",
     )
+    set_chart = style_plotly_chart(set_chart)
 
     st.plotly_chart(
         set_chart,
@@ -196,6 +204,8 @@ with right_column:
             "nach Seltenheit"
         ),
     )
+    rarity_chart = style_plotly_chart(rarity_chart)
+
 
     st.plotly_chart(
         rarity_chart,
@@ -219,6 +229,8 @@ card_type_chart = create_progress_chart(
     x_label="Kartentyp",
     title="Gesammelte und fehlende Karten nach Kartentyp",
 )
+card_type_chart = style_plotly_chart(card_type_chart)
+
 
 st.plotly_chart(
     card_type_chart,
@@ -252,12 +264,14 @@ inventory_chart = px.bar(
         "card_count": "Anzahl unterschiedlicher Karten",
     },
     title="Anzahl Karten nach Inventarbestand",
+    color_discrete_sequence=["#FFC000"]
 )
 
 inventory_chart.update_layout(
     xaxis_title="Bestand pro Karte",
     yaxis_title="Unterschiedliche Karten",
 )
+inventory_chart = style_plotly_chart(inventory_chart)
 
 st.plotly_chart(
     inventory_chart,

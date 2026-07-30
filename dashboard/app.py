@@ -1,5 +1,5 @@
 import streamlit as st
-
+from styles import apply_riftbound_theme
 
 st.set_page_config(
     page_title="Riftbound Collection",
@@ -8,6 +8,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+apply_riftbound_theme()
 
 pages = {
     "Sammlung": [
