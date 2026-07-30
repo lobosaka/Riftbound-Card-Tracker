@@ -370,7 +370,7 @@ if st.session_state.manual_search_mode:
 
     manual_identifier = st.text_input(
         "Karten-ID oder Code manuell eingeben",
-        placeholder="Zum Beispiel VEN-012/166",
+        placeholder="Zum Beispiel ogn-001-298",
         key="manual_identifier_after_failed_detection",
     )
 
